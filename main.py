@@ -15,7 +15,11 @@ def run_once():
     print("Checking source points...")
     print()
 
-    alerts, forecasts = detect_all()
+    try:
+        alerts, forecasts = detect_all()
+    except Exception as e:
+        print("Detect error:", e)
+        alerts, forecasts = [], []
 
     print()
     print("=" * 60)
@@ -24,12 +28,18 @@ def run_once():
     print("=" * 60)
 
     if alerts:
-        print("Sending current alerts to Bale...")
-        send_alert(alerts)
+        try:
+            print("Sending current alerts to Bale...")
+            send_alert(alerts)
+        except Exception as e:
+            print("Send error:", e)
 
     if forecasts:
-        print("Sending forecast alerts to Bale...")
-        send_forecast_alert(forecasts)
+        try:
+            print("Sending forecast alerts to Bale...")
+            send_forecast_alert(forecasts)
+        except Exception as e:
+            print("Forecast send error:", e)
 
 
 def main():

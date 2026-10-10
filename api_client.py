@@ -2,7 +2,8 @@ import requests
 from config import API_URL, AIR_QUALITY_URL, FORECAST_DAYS
 
 
-def get_wind_data(lat, lon):
+def get_wind_data(lat, lon, retries=3):
+    """دریافت داده باد از Open-Meteo با تلاش مجدد"""
     params = {
         "latitude": lat,
         "longitude": lon,
@@ -10,43 +11,35 @@ def get_wind_data(lat, lon):
         "forecast_days": FORECAST_DAYS,
         "wind_speed_unit": "kmh",
     }
-    try:
-        r = requests.get(API_URL, params=params, timeout=20)
-        r.raise_for_status()
-        return r.json()
-    except Exception as e:
-        print("Wind API error:", e)
-        return None
+    for attempt in range(retries):
+        try:
+            r = requests.get(API_URL, params=params, timeout=60)
+            r.raise_for_status()
+            return r.json()
+        except Exception as e:
+            print("Wind API error (attempt " + str(attempt + 1) + "):", e)
+            if attempt < retries - 1:
+                import time
+                time.sleep(5)
+    return None
 
 
-def get_dust_data(lat, lon):
+def get_dust_data(lat, lon, retries=3):
+    """دریافت داده گرد و خاک با تلاش مجدد"""
     params = {
         "latitude": lat,
         "longitude": lon,
         "hourly": "pm10,dust",
         "forecast_days": FORECAST_DAYS,
     }
-    try:
-        r = requests.get(AIR_QUALITY_URL, params=params, timeout=20)
-        r.raise_for_status()
-        return r.json()
-    except Exception as e:
-        print("Dust API error:", e)
-        return None
-
-def get_wind_data_high_alt(lat, lon):
-    """دریافت باد در ترازهای بالاتر (برای پیش‌بینی مسیر)"""
-    params = {
-        "latitude": lat,
-        "longitude": lon,
-        "hourly": "wind_speed_850hPa,wind_direction_850hPa",
-        "forecast_days": 2,
-        "wind_speed_unit": "kmh",
-    }
-    try:
-        r = requests.get(API_URL, params=params, timeout=20)
-        r.raise_for_status()
-        return r.json()
-    except Exception as e:
-        print("High-alt API error:", e)
-        return None
+    for attempt in range(retries):
+        try:
+            r = requests.get(AIR_QUALITY_URL, params=params, timeout=60)
+            r.raise_for_status()
+            return r.json()
+        except Exception as e:
+            print("Dust API error (attempt " + str(attempt + 1) + "):", e)
+            if attempt < retries - 1:
+                import time
+                time.sleep(5)
+    return None
