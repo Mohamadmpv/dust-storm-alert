@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BALE_TOKEN = os.getenv("BALE_TOKEN")
-BALE_CHAT_ID = os.getenv("BALE_CHAT_ID")
+BALE_CHAT_ID = os.getenv("BALE_CHAT_ID", "")
 BALE_CHAT_IDS = os.getenv("BALE_CHAT_IDS", BALE_CHAT_ID).split(",")
 
 # آستانه سرعت باد (km/h)
