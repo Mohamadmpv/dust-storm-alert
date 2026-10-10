@@ -1,0 +1,15 @@
+.env
+users.json
+alert_history.json
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+build/
+dist/
+*.egg-info/
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
