@@ -40,26 +40,21 @@ def get_all_chat_ids():
     """دریافت همه Chat IDها"""
     chat_ids = []
 
-    # 1. از BALE_CHAT_IDS (محیط - GitHub Secrets)
+    # اولویت اول: BALE_CHAT_IDS از محیط (GitHub Secrets)
     env_ids = os.getenv("BALE_CHAT_IDS", "")
+    print("DEBUG: BALE_CHAT_IDS from env =", env_ids)
+    
     if env_ids:
         for cid in env_ids.split(","):
             cid = cid.strip()
             if cid and cid not in chat_ids:
                 chat_ids.append(cid)
 
-    # 2. از BALE_CHAT_ID (محیط)
+    # اولویت دوم: BALE_CHAT_ID
     if BALE_CHAT_ID and BALE_CHAT_ID not in chat_ids:
         chat_ids.append(BALE_CHAT_ID)
 
-    # 3. از users.json (اگر وجود دارد)
-    try:
-        for cid in load_users():
-            if cid and cid not in chat_ids:
-                chat_ids.append(cid)
-    except Exception:
-        pass
-
+    print("DEBUG: Total chat_ids =", chat_ids)
     return chat_ids
 
 
