@@ -3,15 +3,25 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# ==================== توکن و Chat IDهای بله ====================
 BALE_TOKEN = os.getenv("BALE_TOKEN")
-BALE_CHAT_ID = os.getenv("BALE_CHAT_ID", "")
-BALE_CHAT_IDS = os.getenv("BALE_CHAT_IDS", BALE_CHAT_ID).split(",")
 
-# آستانه سرعت باد (km/h)
-WIND_SPEED_THRESHOLD = 20
+# BALE_CHAT_ID دیگر استفاده نمی‌شود (همه از BALE_CHAT_IDS می‌آید)
+BALE_CHAT_ID = ""
+
+# Chat IDها با کاما از محیط خوانده می‌شوند
+_env_chat_ids = os.getenv("BALE_CHAT_IDS", "")
+if _env_chat_ids:
+    BALE_CHAT_IDS = [cid.strip() for cid in _env_chat_ids.split(",") if cid.strip()]
+else:
+    BALE_CHAT_IDS = []
+
+# ==================== آستانه‌ها ====================
+WIND_SPEED_THRESHOLD = 20   # km/h
 MIN_DIRECTION = 225
 MAX_DIRECTION = 315
 
+# ==================== نقاط بررسی ====================
 SOURCE_POINTS = [
     # --- نقاط منشأ گرد و خاک خارجی ---
     {"name": "بغداد (عراق)",     "lat": 33.3152, "lon": 44.3661, "type": "external"},
@@ -36,6 +46,7 @@ SOURCE_POINTS = [
     {"name": "بندر انزلی",         "lat": 37.4720, "lon": 49.4630, "type": "internal"},
 ]
 
+# ==================== تنظیمات API ====================
 FORECAST_DAYS = 2
 API_URL = "https://api.open-meteo.com/v1/forecast"
 AIR_QUALITY_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"

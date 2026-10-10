@@ -37,22 +37,15 @@ def load_users():
 
 
 def get_all_chat_ids():
-    """دریافت همه Chat IDها"""
+    """دریافت همه Chat IDها از BALE_CHAT_IDS"""
     chat_ids = []
 
-    # اولویت اول: BALE_CHAT_IDS از محیط (GitHub Secrets)
-    env_ids = os.getenv("BALE_CHAT_IDS", "")
-    print("DEBUG: BALE_CHAT_IDS from env =", env_ids)
-    
-    if env_ids:
-        for cid in env_ids.split(","):
-            cid = cid.strip()
+    # از BALE_CHAT_IDS (که در config.py خوانده شده)
+    if BALE_CHAT_IDS:
+        for cid in BALE_CHAT_IDS:
+            cid = str(cid).strip()
             if cid and cid not in chat_ids:
                 chat_ids.append(cid)
-
-    # اولویت دوم: BALE_CHAT_ID
-    if BALE_CHAT_ID and BALE_CHAT_ID not in chat_ids:
-        chat_ids.append(BALE_CHAT_ID)
 
     print("DEBUG: Total chat_ids =", chat_ids)
     return chat_ids
