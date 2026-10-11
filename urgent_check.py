@@ -1,12 +1,14 @@
 """
-بررسی اضطراری: فقط نقاط حساس (دریاها و بنادر) را چک می‌کند.
+بررسی اضطراری: فقط نقاط حساس (دریاها + بنادر + تهران) را چک می‌کند.
 اگر باد بالا باشد، هشدار فوری می‌فرستد.
 """
 from api_client import get_wind_data
-from config import WIND_SPEED_THRESHOLD
-from notifier import send_alert
+from config import WIND_SPEED_THRESHOLD, BALE_CHAT_IDS
+from notifier import _send_to_all
 from jalali import now_jalali
 from datetime import datetime, timezone, timedelta
+import asyncio
+
 
 # نقاط حساس (دریاها + بنادر + تهران)
 URGENT_POINTS = [
@@ -22,7 +24,7 @@ URGENT_POINTS = [
 
 
 def check_urgent():
-    """بررسی سریع نقاط حساس"""
+    """بررسی سریع نقاط حساس در ۲ ساعت آینده"""
     alerts = []
     now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
     now_tehran = now_utc + timedelta(hours=3, minutes=30)
@@ -38,7 +40,6 @@ def check_urgent():
         directions = hourly["wind_direction_10m"]
 
         for i, time_str in enumerate(times):
-            # فقط ۲ ساعت آینده را چک کن
             try:
                 alert_time = datetime.fromisoformat(time_str)
                 alert_time_tehran = alert_time + timedelta(hours=3, minutes=30)
@@ -52,7 +53,6 @@ def check_urgent():
             if speed is None or speed <= WIND_SPEED_THRESHOLD:
                 continue
 
-            # اگر باد بالای آستانه و در ۲ ساعت آینده بود
             alert = {
                 "point": point["name"],
                 "type": point["type"],
@@ -65,12 +65,13 @@ def check_urgent():
                 "forecast": None,
             }
             alerts.append(alert)
-            break  # فقط اولین هشدار هر نقطه
+            break
 
     return alerts
 
 
-if __name__ == "__main__":
+def run_urgent():
+    """اجرای بررسی اضطراری و ارسال هشدار"""
     print("=" * 60)
     print("بررسی اضطراری - " + now_jalali())
     print("=" * 60)
@@ -79,6 +80,24 @@ if __name__ == "__main__":
 
     if alerts:
         print("هشدار فوری یافت شد:", len(alerts))
-        send_alert(alerts)
+
+        msg = "🚨 **هشدار فوری طوفان** 🚨\n\n"
+        msg += "📅 " + now_jalali() + "\n"
+        msg += "━━━━━━━━━━━━━━━\n\n"
+
+        for a in alerts:
+            msg += "⚠️ **" + a["point"] + "**\n"
+            msg += "   💨 سرعت باد: " + str(a["speed"]) + " km/h\n"
+            msg += "   🕐 زمان: " + a["time"] + "\n"
+            msg += "   📌 باد در ۲ ساعت آینده می‌رسد!\n\n"
+
+        msg += "━━━━━━━━━━━━━━━\n"
+
+        asyncio.run(_send_to_all(msg))
+        print("هشدار فوری ارسال شد.")
     else:
         print("وضعیت عادی است.")
+
+
+if __name__ == "__main__":
+    run_urgent()
