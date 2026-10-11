@@ -37,10 +37,9 @@ def load_users():
 
 
 def get_all_chat_ids():
-    """دریافت همه Chat IDها از BALE_CHAT_IDS"""
+    """دریافت همه Chat IDها — فقط از BALE_CHAT_IDS"""
     chat_ids = []
 
-    # از BALE_CHAT_IDS (که در config.py خوانده شده)
     if BALE_CHAT_IDS:
         for cid in BALE_CHAT_IDS:
             cid = str(cid).strip()
