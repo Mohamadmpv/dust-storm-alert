@@ -1,3 +1,4 @@
+from datetime import datetime, timezone, timedelta
 from api_client import get_wind_data, get_dust_data
 from config import (
     SOURCE_POINTS,
@@ -36,17 +37,18 @@ def analyze_point(point):
     directions = hourly["wind_direction_10m"]
     gusts = hourly.get("wind_gusts_10m", [None] * len(times))
 
-    # ✅ زمان فعلی (UTC)
-    from datetime import datetime, timezone
+    # ✅ زمان فعلی به وقت تهران (UTC+3:30)
     now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+    now_tehran = now_utc + timedelta(hours=3, minutes=30)
 
     for i, time_str in enumerate(times):
-        # ✅ فیلتر: فقط زمان‌های آینده
+        # ✅ فیلتر: فقط زمان‌های آینده (به وقت تهران)
         try:
-            # Open-Meteo زمان را به فرمت ISO می‌دهد: "2026-10-10T06:00"
             alert_time = datetime.fromisoformat(time_str)
-            if alert_time < now_utc:
-                continue  # این زمان گذشته، رد کن
+            # Open-Meteo زمان را UTC می‌دهد
+            alert_time_tehran = alert_time + timedelta(hours=3, minutes=30)
+            if alert_time_tehran < now_tehran:
+                continue
         except Exception:
             pass
 
@@ -92,10 +94,6 @@ def analyze_point(point):
 
 
 def detect_forecast_alert(point, hours_ahead=6):
-    """
-    هشدار پیش‌بینانه: اگر در چند ساعت آینده باد از آستانه عبور کند،
-    حتی اگر الان آرام باشد.
-    """
     wind = get_wind_data(point["lat"], point["lon"])
     if not wind or "hourly" not in wind:
         return None
@@ -105,16 +103,27 @@ def detect_forecast_alert(point, hours_ahead=6):
     speeds = hourly["wind_speed_10m"]
     directions = hourly["wind_direction_10m"]
 
-    # پیدا کردن اولین زمانی که باد از آستانه عبور می‌کند
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+    now_tehran = now_utc + timedelta(hours=3, minutes=30)
+
     for i in range(min(hours_ahead, len(speeds))):
         speed = speeds[i]
         direction = directions[i]
+
         if speed is None or speed <= WIND_SPEED_THRESHOLD:
             continue
 
-        # برای نقاط خارجی، جهت هم مهم است
         if point["type"] == "external" and not is_toward_iran(direction):
             continue
+
+        # ✅ فیلتر زمان گذشته
+        try:
+            alert_time = datetime.fromisoformat(times[i])
+            alert_time_tehran = alert_time + timedelta(hours=3, minutes=30)
+            if alert_time_tehran < now_tehran:
+                continue
+        except Exception:
+            pass
 
         return {
             "point": point["name"],
@@ -129,20 +138,17 @@ def detect_forecast_alert(point, hours_ahead=6):
 
 
 def detect_all():
-    """جمع‌آوری هشدارهای فعلی + پیش‌بینانه"""
     all_alerts = []
     forecast_alerts = []
 
     for point in SOURCE_POINTS:
         print("Checking:", point["name"])
 
-        # هشدارهای فعلی
         alerts = analyze_point(point)
         if alerts:
             print("  Found", len(alerts), "alerts")
         all_alerts.extend(alerts)
 
-        # هشدار پیش‌بینانه (اگر الان آرام بود، ولی در آینده شدید می‌شود)
         if not alerts:
             fc = detect_forecast_alert(point, hours_ahead=6)
             if fc:
