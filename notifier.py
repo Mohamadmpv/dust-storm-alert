@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from baleio import Bot
 from baleio.client.default import DefaultBotProperties
 from baleio.enums import ParseMode
-from config import BALE_TOKEN, BALE_CHAT_ID
+from config import BALE_TOKEN, BALE_CHAT_ID, BALE_CHAT_IDS
 from jalali import to_jalali, now_jalali
 
 
