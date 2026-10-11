@@ -36,7 +36,20 @@ def analyze_point(point):
     directions = hourly["wind_direction_10m"]
     gusts = hourly.get("wind_gusts_10m", [None] * len(times))
 
-    for i, time in enumerate(times):
+    # ✅ زمان فعلی (UTC)
+    from datetime import datetime, timezone
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    for i, time_str in enumerate(times):
+        # ✅ فیلتر: فقط زمان‌های آینده
+        try:
+            # Open-Meteo زمان را به فرمت ISO می‌دهد: "2026-10-10T06:00"
+            alert_time = datetime.fromisoformat(time_str)
+            if alert_time < now_utc:
+                continue  # این زمان گذشته، رد کن
+        except Exception:
+            pass
+
         speed = speeds[i]
         direction = directions[i]
 
@@ -50,7 +63,7 @@ def analyze_point(point):
         else:
             alert_msg = "باد شدید / احتمال گرد و خاک در این شهر"
 
-        # ✅ فقط برای اولین هشدار، پیش‌بینی بگیر
+        # پیش‌بینی ساعت بعد
         forecast_info = None
         if i + 1 < len(speeds):
             next_speed = speeds[i + 1]
@@ -66,7 +79,7 @@ def analyze_point(point):
             "point": point["name"],
             "type": point["type"],
             "message": alert_msg,
-            "time": time,
+            "time": time_str,
             "speed": round(speed, 1),
             "direction": direction,
             "gust": round(gusts[i], 1) if gusts[i] else None,
