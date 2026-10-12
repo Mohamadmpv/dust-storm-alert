@@ -25,5 +25,7 @@ jobs:
       - name: Collect chat IDs
         env:
           BALE_TOKEN: ${{ secrets.BALE_TOKEN }}
+          GIST_ID: ${{ secrets.GIST_ID }}
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
           python collect_ids.py
