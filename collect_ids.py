@@ -3,7 +3,6 @@ import json
 import requests
 from config import BALE_TOKEN
 
-
 GIST_ID = os.getenv("GIST_ID")
 GH_PAT = os.getenv("GH_PAT")
 
@@ -24,13 +23,7 @@ def get_gist_users():
 def save_gist_users(users):
     url = "https://api.github.com/gists/" + GIST_ID
     headers = {"Authorization": "token " + GH_PAT}
-    data = {
-        "files": {
-            "users.json": {
-                "content": json.dumps(users, ensure_ascii=False, indent=2)
-            }
-        }
-    }
+    data = {"files": {"users.json": {"content": json.dumps(users, ensure_ascii=False, indent=2)}}}
     try:
         r = requests.patch(url, headers=headers, json=data, timeout=30)
         r.raise_for_status()
@@ -54,46 +47,44 @@ def get_all_updates():
 
 
 def collect():
-    print("=" * 60)
-    print("جمع‌آوری Chat IDها")
-    print("=" * 60)
-
+    print("Collecting Chat IDs")
     users = get_gist_users()
     print("Users in Gist before:", len(users))
 
     data = get_all_updates()
     if not data or not data.get("ok"):
-        print("خطا در دریافت اطلاعات")
+        print("Error getting updates")
         return
 
     updates = data.get("result", [])
-    print("تعداد پیام‌های دریافتی:", len(updates))
-
+    print("Updates received:", len(updates))
     new_count = 0
+    last_update_id = 0
 
     for update in updates:
+        last_update_id = update.get("update_id", 0)
         message = update.get("message") or update.get("channel_post")
         if not message:
             continue
-
         chat = message.get("chat", {})
         chat_id = str(chat.get("id"))
         name = chat.get("first_name", "") or chat.get("title", "Unknown")
-
         if chat_id not in users:
             users[chat_id] = name
             new_count += 1
             print("NEW:", chat_id, "|", name)
 
     if new_count > 0:
-        if save_gist_users(users):
-            print("Gist updated. Total users:", len(users))
+        save_gist_users(users)
     else:
         print("No new users.")
 
-    print("=" * 60)
+    # ✅ مهم: offset را ذخیره کن تا پیام‌های تکراری خوانده نشوند
+    if last_update_id > 0:
+        with open("last_update.txt", "w") as f:
+            f.write(str(last_update_id + 1))
+
     print("Total users in Gist:", len(users))
-    print("=" * 60)
 
 
 if __name__ == "__main__":
