@@ -1,11 +1,19 @@
 """
-گزارش آب‌وهوای فردا برای شهرهای اصلی ایران
+گزارش آب‌وهوای فردا - مستقل (بدون وابستگی به notifier)
 """
 import asyncio
-from datetime import datetime, timezone, timedelta
-from notifier import _send_to_all
-from jalali import now_jalali
+import os
+import json
 import requests
+from baleio import Bot
+from baleio.client.default import DefaultBotProperties
+from baleio.enums import ParseMode
+from config import BALE_TOKEN, BALE_CHAT_ID, BALE_CHAT_IDS
+from jalali import now_jalali
+
+
+GIST_ID = os.getenv("GIST_ID")
+GH_PAT = os.getenv("GH_PAT")
 
 
 WEATHER_CITIES = [
@@ -18,6 +26,52 @@ WEATHER_CITIES = [
     {"name": "چابهار",    "lat": 25.2900, "lon": 60.6430},
     {"name": "بندر انزلی", "lat": 37.4720, "lon": 49.4630},
 ]
+
+
+def get_all_chat_ids():
+    chat_ids = []
+    try:
+        if GIST_ID and GH_PAT:
+            url = "https://api.github.com/gists/" + GIST_ID
+            headers = {"Authorization": "token " + GH_PAT}
+            r = requests.get(url, headers=headers, timeout=30)
+            r.raise_for_status()
+            content = r.json()["files"]["users.json"]["content"]
+            users = json.loads(content) if content else {}
+            for cid in users.keys():
+                cid = str(cid).strip()
+                if cid and cid not in chat_ids:
+                    chat_ids.append(cid)
+    except Exception as e:
+        print("Gist read error:", e)
+
+    if BALE_CHAT_IDS:
+        for cid in BALE_CHAT_IDS:
+            cid = str(cid).strip()
+            if cid and cid not in chat_ids:
+                chat_ids.append(cid)
+
+    if BALE_CHAT_ID and BALE_CHAT_ID not in chat_ids:
+        chat_ids.append(BALE_CHAT_ID)
+
+    print("DEBUG: Total chat_ids =", chat_ids)
+    return chat_ids
+
+
+async def send_to_all(message):
+    bot = Bot(
+        token=BALE_TOKEN,
+        default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN)
+    )
+    chat_ids = get_all_chat_ids()
+    print("Total recipients:", len(chat_ids))
+    for chat_id in chat_ids:
+        try:
+            await bot.send_message(chat_id=chat_id, text=message)
+            print("Sent to:", chat_id)
+        except Exception as e:
+            print("Failed:", chat_id, e)
+    await bot.session.close()
 
 
 def get_weather(lat, lon):
@@ -83,13 +137,13 @@ def build_weather_message():
         weather_text = weather_code_to_text(tomorrow_code)
         rain_text = ""
         if tomorrow_rain and tomorrow_rain > 0:
-            rain_text = " | 🌧️ بارش: " + str(round(tomorrow_rain, 1)) + " mm"
+            rain_text = "   🌧️ بارش: " + str(round(tomorrow_rain, 1)) + " mm\n"
 
         msg += "🔹 **" + city["name"] + "**\n"
         msg += "   " + weather_text + "\n"
         msg += "   🌡️ دما: " + str(round(tomorrow_min, 1)) + "° تا " + str(round(tomorrow_max, 1)) + "°\n"
         if rain_text:
-            msg += "  " + rain_text + "\n"
+            msg += rain_text
         msg += "\n"
 
     msg += "━━━━━━━━━━━━━━━\n"
@@ -104,8 +158,8 @@ def send_weather_report():
     msg = build_weather_message()
     print(msg)
 
-    asyncio.run(_send_to_all(msg))
-    print("Weather report sent.")
+    asyncio.run(send_to_all(msg))
+    print("Done.")
 
 
 if __name__ == "__main__":
