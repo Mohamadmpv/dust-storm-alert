@@ -1,17 +1,15 @@
 """
-گزارش آب‌وهوای فردا - مستقل (بدون وابستگی به notifier)
+گزارش آب‌وهوا + وضعیت گرد و خاک - هر ۱۲ ساعت
 """
 import asyncio
 import os
 import json
 import requests
-from baleio import Bot
-from baleio.client.default import DefaultBotProperties
-from baleio.enums import ParseMode
-from config import BALE_TOKEN, BALE_CHAT_ID, BALE_CHAT_IDS
+from telegram import Bot
 from jalali import now_jalali
 
 
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 GIST_ID = os.getenv("GIST_ID")
 GH_PAT = os.getenv("GH_PAT")
 
@@ -44,41 +42,26 @@ def get_all_chat_ids():
                     chat_ids.append(cid)
     except Exception as e:
         print("Gist read error:", e)
-
-    if BALE_CHAT_IDS:
-        for cid in BALE_CHAT_IDS:
-            cid = str(cid).strip()
-            if cid and cid not in chat_ids:
-                chat_ids.append(cid)
-
-    if BALE_CHAT_ID and BALE_CHAT_ID not in chat_ids:
-        chat_ids.append(BALE_CHAT_ID)
-
-    print("DEBUG: Total chat_ids =", chat_ids)
     return chat_ids
 
 
-async def send_to_all(message):
-    bot = Bot(
-        token=BALE_TOKEN,
-        default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN)
-    )
-    chat_ids = get_all_chat_ids()
-    print("Total recipients:", len(chat_ids))
-    for chat_id in chat_ids:
-        try:
-            await bot.send_message(chat_id=chat_id, text=message)
-            print("Sent to:", chat_id)
-        except Exception as e:
-            print("Failed:", chat_id, e)
-    await bot.session.close()
+def weather_code_to_text(code):
+    if code == 0: return "☀️ آفتابی"
+    if code in [1, 2]: return "🌤️ کمی ابری"
+    if code == 3: return "☁️ ابری"
+    if code in [45, 48]: return "🌫️ مه‌آلود"
+    if code in [51, 53, 55]: return "🌦️ نم‌نم باران"
+    if code in [61, 63, 65]: return "🌧️ بارانی"
+    if code in [71, 73, 75]: return "❄️ برفی"
+    if code in [80, 81, 82]: return "🌧️ رگبار"
+    if code in [95, 96, 99]: return "⛈️ رعد و برق"
+    return "نامشخص"
 
 
 def get_weather(lat, lon):
     url = "https://api.open-meteo.com/v1/forecast"
     params = {
-        "latitude": lat,
-        "longitude": lon,
+        "latitude": lat, "longitude": lon,
         "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code",
         "forecast_days": 2,
         "timezone": "Asia/Tehran",
@@ -88,79 +71,101 @@ def get_weather(lat, lon):
         r.raise_for_status()
         return r.json()
     except Exception as e:
-        print("Weather API error:", e)
+        print("Weather error:", e)
         return None
 
 
-def weather_code_to_text(code):
-    if code == 0:
-        return "☀️ آفتابی"
-    elif code in [1, 2]:
-        return "🌤️ کمی ابری"
-    elif code == 3:
-        return "☁️ ابری"
-    elif code in [45, 48]:
-        return "🌫️ مه‌آلود"
-    elif code in [51, 53, 55]:
-        return "🌦️ نم‌نم باران"
-    elif code in [61, 63, 65]:
-        return "🌧️ بارانی"
-    elif code in [71, 73, 75]:
-        return "❄️ برفی"
-    elif code in [80, 81, 82]:
-        return "🌧️ رگبار"
-    elif code in [95, 96, 99]:
-        return "⛈️ رعد و برق"
-    else:
-        return "نامشخص"
+def get_dust(lat, lon):
+    """دریافت گرد و خاک از Open-Meteo Air Quality"""
+    url = "https://air-quality-api.open-meteo.com/v1/air-quality"
+    params = {
+        "latitude": lat, "longitude": lon,
+        "hourly": "pm10,dust",
+        "forecast_days": 2,
+        "timezone": "Asia/Tehran",
+    }
+    try:
+        r = requests.get(url, params=params, timeout=60)
+        r.raise_for_status()
+        return r.json()
+    except Exception as e:
+        print("Dust error:", e)
+        return None
 
 
-def build_weather_message():
-    msg = "🌤️ **گزارش آب‌وهوای فردا** 🌤️\n\n"
+def build_message():
+    msg = "🌤️ **گزارش روزانه** 🌤️\n\n"
     msg += "📅 " + now_jalali() + "\n"
     msg += "━━━━━━━━━━━━━━━\n\n"
 
+    msg += "🌡️ **آب‌وهوای فردا:**\n\n"
     for city in WEATHER_CITIES:
         data = get_weather(city["lat"], city["lon"])
         if not data or "daily" not in data:
             continue
-
-        daily = data["daily"]
-        if len(daily["time"]) < 2:
+        d = data["daily"]
+        if len(d["time"]) < 2:
             continue
+        tmax = d["temperature_2m_max"][1]
+        tmin = d["temperature_2m_min"][1]
+        rain = d["precipitation_sum"][1]
+        code = d["weather_code"][1]
 
-        tomorrow_max = daily["temperature_2m_max"][1]
-        tomorrow_min = daily["temperature_2m_min"][1]
-        tomorrow_rain = daily["precipitation_sum"][1]
-        tomorrow_code = daily["weather_code"][1]
-
-        weather_text = weather_code_to_text(tomorrow_code)
-        rain_text = ""
-        if tomorrow_rain and tomorrow_rain > 0:
-            rain_text = "   🌧️ بارش: " + str(round(tomorrow_rain, 1)) + " mm\n"
-
-        msg += "🔹 **" + city["name"] + "**\n"
-        msg += "   " + weather_text + "\n"
-        msg += "   🌡️ دما: " + str(round(tomorrow_min, 1)) + "° تا " + str(round(tomorrow_max, 1)) + "°\n"
-        if rain_text:
-            msg += rain_text
+        msg += "🔹 **" + city["name"] + "**: " + weather_code_to_text(code) + "\n"
+        msg += "   🌡️ " + str(round(tmin, 1)) + "° تا " + str(round(tmax, 1)) + "°\n"
+        if rain and rain > 0:
+            msg += "   🌧️ بارش: " + str(round(rain, 1)) + " mm\n"
         msg += "\n"
 
-    msg += "━━━━━━━━━━━━━━━\n"
+    msg += "━━━━━━━━━━━━━━━\n\n"
+    msg += "🌫️ **وضعیت گرد و خاک:**\n\n"
+
+    for city in WEATHER_CITIES:
+        dust = get_dust(city["lat"], city["lon"])
+        if not dust or "hourly" not in dust:
+            continue
+        h = dust["hourly"]
+        if "dust" not in h or len(h["dust"]) < 1:
+            continue
+        now_dust = h["dust"][0]
+        if now_dust is None:
+            continue
+
+        if now_dust < 20:
+            status = "پاک ✅"
+        elif now_dust < 50:
+            status = "متوسط 🟡"
+        elif now_dust < 100:
+            status = "ناسالم 🟠"
+        else:
+            status = "خطرناک 🔴"
+
+        msg += "🔹 **" + city["name"] + "**: " + status + " (" + str(round(now_dust, 1)) + " μg/m³)\n"
+
+    msg += "\n━━━━━━━━━━━━━━━\n"
     return msg
 
 
-def send_weather_report():
+async def send_to_all(message):
+    bot = Bot(token=TELEGRAM_TOKEN)
+    chat_ids = get_all_chat_ids()
+    print("Recipients:", len(chat_ids))
+    for cid in chat_ids:
+        try:
+            await bot.send_message(chat_id=cid, text=message)
+            print("Sent to:", cid)
+        except Exception as e:
+            print("Failed:", cid, e)
+
+
+def main():
     print("=" * 60)
     print("گزارش آب‌وهوا - " + now_jalali())
     print("=" * 60)
-
-    msg = build_weather_message()
-    print(msg)
-
+    msg = build_message()
     asyncio.run(send_to_all(msg))
     print("Done.")
 
 
 if __name__ == "__main__":
-    send_weather_report()
+    main()

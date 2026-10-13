@@ -1,0 +1,23 @@
+name: Weather Report
+
+on:
+  schedule:
+    - cron: '30 2 * * *'
+    - cron: '30 14 * * *'
+  workflow_dispatch:
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt
+      - name: Send report
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          GIST_ID: ${{ secrets.GIST_ID }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: python weather_report.py
