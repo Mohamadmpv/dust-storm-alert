@@ -94,9 +94,10 @@ async def send_welcome(chat_id, name):
 
 
 def collect():
+    print("=" * 60)
     print("Collecting Telegram Chat IDs")
+    print("=" * 60)
     users = get_gist_users()
-    old_users = dict(users)
     print("Users before:", len(users))
 
     offset = get_offset()
@@ -129,7 +130,6 @@ def collect():
         save_gist_users(users)
         print("Gist updated. Total:", len(users))
 
-        # ارسال پیام خوش‌آمد به نفرات جدید
         for chat_id, name in new_users:
             asyncio.run(send_welcome(chat_id, name))
 
@@ -137,6 +137,7 @@ def collect():
         save_offset(last_id + 1)
 
     print("Total users:", len(users))
+    print("=" * 60)
 
 
 if __name__ == "__main__":
