@@ -1,6 +1,8 @@
 import os
 import json
+import asyncio
 import requests
+from telegram import Bot
 
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -71,9 +73,30 @@ def get_updates(offset=None):
         return None
 
 
+async def send_welcome(chat_id, name):
+    bot = Bot(token=TELEGRAM_TOKEN)
+    msg = "✅ **خوش آمدید " + name + " عزیز!**\n\n"
+    msg += "━━━━━━━━━━━━━━━\n\n"
+    msg += "شما با موفقیت در سیستم هشدار طوفان ثبت شدید.\n\n"
+    msg += "⏳ **حداکثر ۱۰ دقیقه دیگر**، وضعیت آب‌وهوا و هشدارهای طوفان برای شما فعال می‌شود.\n\n"
+    msg += "از این به بعد، این پیام‌ها رو خودکار دریافت می‌کنید:\n"
+    msg += "🚨 هشدار فوری طوفان\n"
+    msg += "🌤️ گزارش آب‌وهوای فردا\n"
+    msg += "🌫️ وضعیت گرد و خاک\n\n"
+    msg += "━━━━━━━━━━━━━━━\n"
+    try:
+        await bot.send_message(chat_id=chat_id, text=msg)
+        print("Welcome sent to:", chat_id)
+        return True
+    except Exception as e:
+        print("Failed to send welcome:", chat_id, e)
+        return False
+
+
 def collect():
     print("Collecting Telegram Chat IDs")
     users = get_gist_users()
+    old_users = dict(users)
     print("Users before:", len(users))
 
     offset = get_offset()
@@ -86,7 +109,7 @@ def collect():
 
     updates = data.get("result", [])
     print("Updates received:", len(updates))
-    new_count = 0
+    new_users = []
     last_id = offset
 
     for update in updates:
@@ -99,12 +122,16 @@ def collect():
         name = chat.get("first_name", "") or chat.get("title", "Unknown")
         if chat_id not in users:
             users[chat_id] = name
-            new_count += 1
+            new_users.append((chat_id, name))
             print("NEW:", chat_id, "|", name)
 
-    if new_count > 0:
+    if new_users:
         save_gist_users(users)
         print("Gist updated. Total:", len(users))
+
+        # ارسال پیام خوش‌آمد به نفرات جدید
+        for chat_id, name in new_users:
+            asyncio.run(send_welcome(chat_id, name))
 
     if last_id > 0:
         save_offset(last_id + 1)
