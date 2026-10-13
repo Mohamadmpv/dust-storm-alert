@@ -1,5 +1,5 @@
 """
-هشدار اضطراری طوفان - بررسی ۲ ساعت آینده، هر ۱ ساعت
+هشدار فوری طوفان - بررسی ۲ ساعت آینده، هر ۱ ساعت
 """
 import asyncio
 import os
@@ -118,14 +118,14 @@ async def send_to_all(message):
 
 def main():
     print("=" * 60)
-    print("هشدار اضطراری - " + now_jalali())
+    print("هشدار فوری - " + now_jalali())
     print("=" * 60)
 
     alerts = check_urgent()
     print("Urgent alerts:", len(alerts))
 
     if not alerts:
-        print("No urgent alerts.")
+        print("No urgent alerts. Nothing sent.")
         return
 
     msg = "🚨 **هشدار فوری طوفان** 🚨\n\n"
