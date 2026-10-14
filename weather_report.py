@@ -1,15 +1,19 @@
 """
-گزارش آب‌وهوا + وضعیت گرد و خاک - هر ۱۲ ساعت
+گزارش آب‌وهوا + گرد و خاک - برای تلگرام و بله
 """
 import asyncio
 import os
 import json
 import requests
-from telegram import Bot
+from telegram import Bot as TelegramBot
+from baleio import Bot as BaleBot
+from baleio.client.default import DefaultBotProperties
+from baleio.enums import ParseMode
 from jalali import now_jalali
 
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+BALE_TOKEN = os.getenv("BALE_TOKEN")
 GIST_ID = os.getenv("GIST_ID")
 GH_PAT = os.getenv("GH_PAT")
 
@@ -26,23 +30,32 @@ WEATHER_CITIES = [
 ]
 
 
-def get_all_chat_ids():
-    chat_ids = []
+def get_gist_file(filename):
+    url = "https://api.github.com/gists/" + GIST_ID
+    headers = {"Authorization": "token " + GH_PAT}
     try:
-        if GIST_ID and GH_PAT:
-            url = "https://api.github.com/gists/" + GIST_ID
-            headers = {"Authorization": "token " + GH_PAT}
-            r = requests.get(url, headers=headers, timeout=30)
-            r.raise_for_status()
-            content = r.json()["files"]["users.json"]["content"]
-            users = json.loads(content) if content else {}
-            for cid in users.keys():
-                cid = str(cid).strip()
-                if cid and cid not in chat_ids:
-                    chat_ids.append(cid)
+        r = requests.get(url, headers=headers, timeout=30)
+        r.raise_for_status()
+        return r.json()["files"].get(filename, {}).get("content", "")
     except Exception as e:
         print("Gist read error:", e)
-    return chat_ids
+        return ""
+
+
+def get_telegram_users():
+    content = get_gist_file("telegram_users.json")
+    try:
+        return json.loads(content) if content else {}
+    except Exception:
+        return {}
+
+
+def get_bale_users():
+    content = get_gist_file("bale_users.json")
+    try:
+        return json.loads(content) if content else {}
+    except Exception:
+        return {}
 
 
 def weather_code_to_text(code):
@@ -76,7 +89,6 @@ def get_weather(lat, lon):
 
 
 def get_dust(lat, lon):
-    """دریافت گرد و خاک از Open-Meteo Air Quality"""
     url = "https://air-quality-api.open-meteo.com/v1/air-quality"
     params = {
         "latitude": lat, "longitude": lon,
@@ -97,7 +109,6 @@ def build_message():
     msg = "🌤️ **گزارش روزانه** 🌤️\n\n"
     msg += "📅 " + now_jalali() + "\n"
     msg += "━━━━━━━━━━━━━━━\n\n"
-
     msg += "🌡️ **آب‌وهوای فردا:**\n\n"
     for city in WEATHER_CITIES:
         data = get_weather(city["lat"], city["lon"])
@@ -146,26 +157,51 @@ def build_message():
     return msg
 
 
-async def send_to_all(message):
-    bot = Bot(token=TELEGRAM_TOKEN)
-    chat_ids = get_all_chat_ids()
-    print("Recipients:", len(chat_ids))
-    for cid in chat_ids:
+async def send_telegram(message):
+    users = get_telegram_users()
+    if not users:
+        print("No Telegram users.")
+        return
+    bot = TelegramBot(token=TELEGRAM_TOKEN)
+    print("Telegram recipients:", len(users))
+    for cid in users.keys():
         try:
             await bot.send_message(chat_id=cid, text=message)
-            print("Sent to:", cid)
+            print("  TG Sent:", cid)
         except Exception as e:
-            print("Failed:", cid, e)
+            print("  TG Failed:", cid, e)
 
 
-def main():
+async def send_bale(message):
+    users = get_bale_users()
+    if not users:
+        print("No Bale users.")
+        return
+    bot = BaleBot(
+        token=BALE_TOKEN,
+        default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN)
+    )
+    print("Bale recipients:", len(users))
+    for cid in users.keys():
+        try:
+            await bot.send_message(chat_id=cid, text=message)
+            print("  Bale Sent:", cid)
+        except Exception as e:
+            print("  Bale Failed:", cid, e)
+    await bot.session.close()
+
+
+async def main():
     print("=" * 60)
     print("گزارش آب‌وهوا - " + now_jalali())
     print("=" * 60)
     msg = build_message()
-    asyncio.run(send_to_all(msg))
+
+    await send_telegram(msg)
+    await send_bale(msg)
+
     print("Done.")
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
