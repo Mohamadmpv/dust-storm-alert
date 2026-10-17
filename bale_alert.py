@@ -1,10 +1,6 @@
-import asyncio
 import os
 import json
 import requests
-from baleio import Bot
-from baleio.client.default import DefaultBotProperties
-from baleio.enums import ParseMode
 from jalali import now_jalali
 
 
@@ -26,20 +22,17 @@ def get_bale_users():
         return {}
 
 
-async def send_to_all(message):
-    bot = Bot(
-        token=BALE_TOKEN,
-        default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN)
-    )
-    users = get_bale_users()
-    print("Bale recipients:", len(users))
-    for chat_id in users.keys():
-        try:
-            await bot.send_message(chat_id=chat_id, text=message)
-            print("  Bale Sent:", chat_id)
-        except Exception as e:
-            print("  Bale Failed:", chat_id, e)
-    await bot.session.close()
+def send_message(chat_id, text):
+    url = "https://tapi.bale.ai/bot" + BALE_TOKEN + "/sendMessage"
+    data = {"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}
+    try:
+        r = requests.post(url, json=data, timeout=30)
+        r.raise_for_status()
+        print("  Bale Sent:", chat_id)
+        return True
+    except Exception as e:
+        print("  Bale Failed:", chat_id, e)
+        return False
 
 
 def main():
@@ -53,7 +46,11 @@ def main():
     msg += "اگر این پیام را دیدید، بله کار می‌کند. ✅\n"
     msg += "━━━━━━━━━━━━━━━\n"
 
-    asyncio.run(send_to_all(msg))
+    users = get_bale_users()
+    print("Bale recipients:", len(users))
+    for chat_id in users.keys():
+        send_message(chat_id, msg)
+
     print("Done.")
 
 
