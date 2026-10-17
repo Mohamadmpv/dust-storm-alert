@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# --- توکن‌ها ---
+# --- توکن‌ها (مستقیم از محیط خونده می‌شن) ---
 BALE_TOKEN = os.getenv("BALE_TOKEN")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 GIST_ID = os.getenv("GIST_ID")

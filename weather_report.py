@@ -1,9 +1,15 @@
 import asyncio
+import os
 import json
 import requests
 from telegram import Bot as TelegramBot
-from config import BALE_TOKEN, TELEGRAM_TOKEN, GIST_ID, GH_PAT, WEATHER_CITIES
 from jalali import now_jalali
+
+# توکن‌ها رو مستقیم از محیط می‌خونیم (مثل test_bale_token.py)
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+BALE_TOKEN = os.getenv("BALE_TOKEN")
+GIST_ID = os.getenv("GIST_ID")
+GH_PAT = os.getenv("GH_PAT")
 
 WEATHER_CITIES = [
     {"name": "تهران",     "lat": 35.6892, "lon": 51.3890},
@@ -104,13 +110,12 @@ def send_bale(msg):
     users = get_gist_users("bale_users.json")
     if not users: return
     print("Bale recipients:", len(users))
-    print("  Bale Token Check:", "Token is OK" if BALE_TOKEN else "Token is None")
     
+    if not BALE_TOKEN:
+        print("  Bale Failed: Token is None")
+        return
+        
     for cid in users.keys():
-        if not BALE_TOKEN:
-            print("  Bale Failed: Token is None")
-            continue
-            
         url = f"https://tapi.bale.ai/bot{BALE_TOKEN}/sendMessage"
         try:
             r = requests.post(url, json={"chat_id": cid, "text": msg, "parse_mode": "Markdown"}, timeout=30)
