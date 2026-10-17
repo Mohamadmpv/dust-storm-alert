@@ -7,13 +7,14 @@ import json
 import requests
 from telegram import Bot as TelegramBot
 from jalali import now_jalali
+from dotenv import load_dotenv
 
+load_dotenv()
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 BALE_TOKEN = os.getenv("BALE_TOKEN")
 GIST_ID = os.getenv("GIST_ID")
 GH_PAT = os.getenv("GH_PAT")
-
 
 WEATHER_CITIES = [
     {"name": "تهران",     "lat": 35.6892, "lon": 51.3890},
