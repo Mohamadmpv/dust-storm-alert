@@ -1,14 +1,11 @@
 """
-گزارش آب‌وهوا + گرد و خاک - برای تلگرام و بله
+گزارش آب‌وهوا + گرد و خاک - برای تلگرام و بله (بدون baleio)
 """
 import asyncio
 import os
 import json
 import requests
 from telegram import Bot as TelegramBot
-from baleio import Bot as BaleBot
-from baleio.client.default import DefaultBotProperties
-from baleio.enums import ParseMode
 from jalali import now_jalali
 
 
@@ -172,23 +169,21 @@ async def send_telegram(message):
             print("  TG Failed:", cid, e)
 
 
-async def send_bale(message):
+def send_bale(message):
     users = get_bale_users()
     if not users:
         print("No Bale users.")
         return
-    bot = BaleBot(
-        token=BALE_TOKEN,
-        default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN)
-    )
     print("Bale recipients:", len(users))
     for cid in users.keys():
+        url = "https://tapi.bale.ai/bot" + BALE_TOKEN + "/sendMessage"
+        data = {"chat_id": cid, "text": message, "parse_mode": "Markdown"}
         try:
-            await bot.send_message(chat_id=cid, text=message)
+            r = requests.post(url, json=data, timeout=30)
+            r.raise_for_status()
             print("  Bale Sent:", cid)
         except Exception as e:
             print("  Bale Failed:", cid, e)
-    await bot.session.close()
 
 
 async def main():
@@ -198,7 +193,7 @@ async def main():
     msg = build_message()
 
     await send_telegram(msg)
-    await send_bale(msg)
+    send_bale(msg)
 
     print("Done.")
 
