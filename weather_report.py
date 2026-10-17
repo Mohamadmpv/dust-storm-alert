@@ -1,15 +1,9 @@
 import asyncio
-import os
 import json
 import requests
 from telegram import Bot as TelegramBot
+from config import BALE_TOKEN, TELEGRAM_TOKEN, GIST_ID, GH_PAT, WEATHER_CITIES
 from jalali import now_jalali
-
-# این خط مهمه: توکن‌ها رو مستقیم از محیط می‌خونیم
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-BALE_TOKEN = os.getenv("BALE_TOKEN")
-GIST_ID = os.getenv("GIST_ID")
-GH_PAT = os.getenv("GH_PAT")
 
 WEATHER_CITIES = [
     {"name": "تهران",     "lat": 35.6892, "lon": 51.3890},
