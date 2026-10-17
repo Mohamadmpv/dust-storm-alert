@@ -3,16 +3,13 @@ import os
 import json
 import requests
 from telegram import Bot as TelegramBot
-from dotenv import load_dotenv
+from jalali import now_jalali
 
-load_dotenv()
-
+# این خط مهمه: توکن‌ها رو مستقیم از محیط می‌خونیم
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 BALE_TOKEN = os.getenv("BALE_TOKEN")
 GIST_ID = os.getenv("GIST_ID")
 GH_PAT = os.getenv("GH_PAT")
-
-from jalali import now_jalali
 
 WEATHER_CITIES = [
     {"name": "تهران",     "lat": 35.6892, "lon": 51.3890},
@@ -113,7 +110,13 @@ def send_bale(msg):
     users = get_gist_users("bale_users.json")
     if not users: return
     print("Bale recipients:", len(users))
+    print("  Bale Token Check:", "Token is OK" if BALE_TOKEN else "Token is None")
+    
     for cid in users.keys():
+        if not BALE_TOKEN:
+            print("  Bale Failed: Token is None")
+            continue
+            
         url = f"https://tapi.bale.ai/bot{BALE_TOKEN}/sendMessage"
         try:
             r = requests.post(url, json={"chat_id": cid, "text": msg, "parse_mode": "Markdown"}, timeout=30)
