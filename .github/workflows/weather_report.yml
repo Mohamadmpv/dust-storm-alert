@@ -18,6 +18,7 @@ jobs:
       - name: Send report
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          BALE_TOKEN: ${{ secrets.BALE_TOKEN }}
           GIST_ID: ${{ secrets.GIST_ID }}
           GH_PAT: ${{ secrets.GH_PAT }}
         run: python weather_report.py
