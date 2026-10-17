@@ -2,4 +2,3 @@ requests
 python-dotenv
 jdatetime
 python-telegram-bot
-baleio
