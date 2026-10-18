@@ -10,7 +10,7 @@ GIST_ID = os.getenv("GIST_ID")
 GH_PAT = os.getenv("GH_PAT")
 
 # --- تنظیمات طوفان ---
-WIND_SPEED_THRESHOLD = 1
+WIND_SPEED_THRESHOLD = 15
 MIN_DIRECTION = 225
 MAX_DIRECTION = 315
 
