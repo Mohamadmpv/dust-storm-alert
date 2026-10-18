@@ -69,7 +69,11 @@ def get_dust(lat, lon):
         return None
 
 def build_message():
-    msg = "🌤️ **گزارش روزانه** 🌤️\n\n📅 " + now_jalali() + "\n━━━━━━━━━━━━━━━\n\n🌡️ **آب‌وهوای فردا:**\n\n"
+    msg = "🌤️ **گزارش آب‌وهوا و گرد و خاک** 🌤️\n"
+    msg += "📅 " + now_jalali() + "\n"
+    msg += "━━━━━━━━━━━━━━━━━━━━\n\n"
+    
+    msg += "🌡️ **آب‌وهوای فردا:**\n"
     for city in WEATHER_CITIES:
         data = get_weather(city["lat"], city["lon"])
         if not data or "daily" not in data: continue
@@ -77,11 +81,15 @@ def build_message():
         if len(d["time"]) < 2: continue
         tmax, tmin = d["temperature_2m_max"][1], d["temperature_2m_min"][1]
         rain, code = d["precipitation_sum"][1], d["weather_code"][1]
-        msg += f"🔹 **{city['name']}**: {weather_code_to_text(code)}\n   🌡️ {round(tmin, 1)}° تا {round(tmax, 1)}°\n"
-        if rain and rain > 0: msg += f"   🌧️ بارش: {round(rain, 1)} mm\n"
-        msg += "\n"
+        
+        msg += f"📍 **{city['name']}**\n"
+        msg += f"   {weather_code_to_text(code)}\n"
+        msg += f"   🌡️ {round(tmin, 1)}° تا {round(tmax, 1)}°\n"
+        if rain and rain > 0: 
+            msg += f"   🌧️ بارش: {round(rain, 1)} mm\n"
+        msg += "   ➖➖➖➖➖➖\n"
 
-    msg += "━━━━━━━━━━━━━━━\n\n🌫️ **وضعیت گرد و خاک:**\n\n"
+    msg += "\n🌫️ **وضعیت گرد و خاک:**\n"
     for city in WEATHER_CITIES:
         dust = get_dust(city["lat"], city["lon"])
         if not dust or "hourly" not in dust: continue
@@ -90,8 +98,12 @@ def build_message():
         now_dust = h["dust"][0]
         if now_dust is None: continue
         status = "پاک ✅" if now_dust < 20 else "متوسط 🟡" if now_dust < 50 else "ناسالم 🟠" if now_dust < 100 else "خطرناک 🔴"
-        msg += f"🔹 **{city['name']}**: {status} ({round(now_dust, 1)} μg/m³)\n"
-    msg += "\n━━━━━━━━━━━━━━━\n"
+        
+        msg += f"📍 **{city['name']}**: {status}\n"
+        msg += f"   🌫️ {round(now_dust, 1)} μg/m³\n"
+        msg += "   ➖➖➖➖➖➖\n"
+        
+    msg += "\n━━━━━━━━━━━━━━━━━━━━"
     return msg
 
 async def send_telegram(msg):

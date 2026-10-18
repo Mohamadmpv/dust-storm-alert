@@ -41,7 +41,6 @@ def get_wind(lat, lon):
 
 def check_urgent():
     alerts = []
-    # زمان فعلی تهران
     now_tehran = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=3, minutes=30)
     
     for p in URGENT_POINTS:
@@ -51,11 +50,8 @@ def check_urgent():
         
         for i, t in enumerate(times):
             try:
-                # زمان API رو به تهران تبدیل میکنیم
                 alert_time_tehran = datetime.fromisoformat(t)
                 diff = (alert_time_tehran - now_tehran).total_seconds() / 60
-                
-                # فقط 2 ساعت آینده رو چک کن
                 if diff < 0 or diff > 120: continue
             except Exception: continue
             
@@ -66,7 +62,7 @@ def check_urgent():
                     "speed": round(speeds[i], 1),
                     "minutes": int(diff)
                 })
-                break # فقط اولین هشدار برای هر نقطه
+                break
     return alerts
 
 async def send_telegram(msg):
@@ -106,10 +102,19 @@ async def main():
         print("No urgent alerts. Nothing sent.")
         return
         
-    msg = "🚨 **هشدار فوری طوفان** 🚨\n\n📅 " + now_jalali() + "\n━━━━━━━━━━━━━━━\n\n"
+    # ✅ اینجا قسمت گرافیکی و مرتب پیام هشدار است
+    msg = "🚨 **هشدار فوری طوفان** 🚨\n"
+    msg += "📅 " + now_jalali() + "\n"
+    msg += "━━━━━━━━━━━━━━━━━━━━\n\n"
+    
     for a in alerts:
-        msg += f"⚠️ **{a['point']}**\n   💨 {a['speed']} km/h\n   🕐 {a['time_tehran']}\n   ⏳ تا {a['minutes']} دقیقه\n\n"
-    msg += "━━━━━━━━━━━━━━━\n"
+        msg += f"⚠️ **{a['point']}**\n"
+        msg += f"   💨 سرعت باد: {a['speed']} km/h\n"
+        msg += f"   🕐 زمان: {a['time_tehran']}\n"
+        msg += f"   ⏳ حدود {a['minutes']} دقیقه دیگر\n"
+        msg += "   ➖➖➖➖➖➖\n"
+        
+    msg += "\n━━━━━━━━━━━━━━━━━━━━\n"
     
     await send_telegram(msg)
     send_bale(msg)
