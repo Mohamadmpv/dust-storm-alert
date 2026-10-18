@@ -1,16 +1,7 @@
 import os
 import json
-import asyncio
 import requests
-from baleio import Bot
-from baleio.client.default import DefaultBotProperties
-from baleio.enums import ParseMode
-
-
-BALE_TOKEN = os.getenv("BALE_TOKEN")
-GIST_ID = os.getenv("GIST_ID")
-GH_PAT = os.getenv("GH_PAT")
-
+from config import BALE_TOKEN, GIST_ID, GH_PAT
 
 def get_gist_file(filename):
     url = "https://api.github.com/gists/" + GIST_ID
@@ -22,7 +13,6 @@ def get_gist_file(filename):
     except Exception as e:
         print("Gist read error:", e)
         return ""
-
 
 def save_gist_file(filename, content):
     url = "https://api.github.com/gists/" + GIST_ID
@@ -36,7 +26,6 @@ def save_gist_file(filename, content):
         print("Gist write error:", e)
         return False
 
-
 def get_bale_users():
     content = get_gist_file("bale_users.json")
     try:
@@ -44,10 +33,8 @@ def get_bale_users():
     except Exception:
         return {}
 
-
 def save_bale_users(users):
     return save_gist_file("bale_users.json", json.dumps(users, ensure_ascii=False, indent=2))
-
 
 def get_offset():
     content = get_gist_file("offset_bale.txt")
@@ -56,13 +43,11 @@ def get_offset():
     except Exception:
         return 0
 
-
 def save_offset(offset):
     return save_gist_file("offset_bale.txt", str(offset))
 
-
 def get_updates(offset=None):
-    url = "https://tapi.bale.ai/bot" + BALE_TOKEN + "/getUpdates"
+    url = f"https://tapi.bale.ai/bot{BALE_TOKEN}/getUpdates"
     params = {"timeout": 10, "limit": 100}
     if offset:
         params["offset"] = offset
@@ -74,26 +59,20 @@ def get_updates(offset=None):
         print("Bale error:", e)
         return None
 
-
-async def send_welcome(chat_id, name):
-    bot = Bot(
-        token=BALE_TOKEN,
-        default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN)
-    )
+def send_welcome(chat_id, name):
+    url = f"https://tapi.bale.ai/bot{BALE_TOKEN}/sendMessage"
     msg = "✅ **خوش آمدید " + name + " عزیز!**\n\n"
     msg += "━━━━━━━━━━━━━━━\n\n"
     msg += "شما در سیستم هشدار طوفان ثبت شدید.\n\n"
     msg += "⏳ حداکثر ۱۰ دقیقه دیگر، اولین گزارش برای شما ارسال می‌شود.\n\n"
     msg += "━━━━━━━━━━━━━━━\n"
+    data = {"chat_id": chat_id, "text": msg, "parse_mode": "Markdown"}
     try:
-        await bot.send_message(chat_id=chat_id, text=msg)
-        await bot.session.close()
+        r = requests.post(url, json=data, timeout=30)
+        r.raise_for_status()
         print("Welcome sent to:", chat_id)
-        return True
     except Exception as e:
-        print("Failed:", chat_id, e)
-        return False
-
+        print("Failed welcome:", chat_id, e)
 
 def collect():
     print("=" * 60)
@@ -132,14 +111,13 @@ def collect():
         save_bale_users(users)
         print("Gist updated. Total:", len(users))
         for chat_id, name in new_users:
-            asyncio.run(send_welcome(chat_id, name))
+            send_welcome(chat_id, name)
 
     if last_id > 0:
         save_offset(last_id + 1)
 
     print("Total users:", len(users))
     print("=" * 60)
-
 
 if __name__ == "__main__":
     collect()
