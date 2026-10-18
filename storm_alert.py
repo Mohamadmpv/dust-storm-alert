@@ -3,6 +3,7 @@ import json
 import requests
 from telegram import Bot as TelegramBot
 from datetime import datetime, timezone, timedelta
+import os
 from config import BALE_TOKEN, TELEGRAM_TOKEN, GIST_ID, GH_PAT, WIND_SPEED_THRESHOLD
 from jalali import now_jalali
 
@@ -40,19 +41,32 @@ def get_wind(lat, lon):
 
 def check_urgent():
     alerts = []
+    # زمان فعلی تهران
     now_tehran = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=3, minutes=30)
+    
     for p in URGENT_POINTS:
         wind = get_wind(p["lat"], p["lon"])
         if not wind or "hourly" not in wind: continue
         times, speeds = wind["hourly"]["time"], wind["hourly"]["wind_speed_10m"]
+        
         for i, t in enumerate(times):
             try:
-                diff = (datetime.fromisoformat(t) - now_tehran).total_seconds() / 60
+                # زمان API رو به تهران تبدیل میکنیم
+                alert_time_tehran = datetime.fromisoformat(t)
+                diff = (alert_time_tehran - now_tehran).total_seconds() / 60
+                
+                # فقط 2 ساعت آینده رو چک کن
                 if diff < 0 or diff > 120: continue
             except Exception: continue
+            
             if speeds[i] and speeds[i] > WIND_SPEED_THRESHOLD:
-                alerts.append({"point": p["name"], "time": t, "speed": round(speeds[i], 1), "minutes": int(diff)})
-                break
+                alerts.append({
+                    "point": p["name"],
+                    "time_tehran": alert_time_tehran.strftime("%Y-%m-%d %H:%M"),
+                    "speed": round(speeds[i], 1),
+                    "minutes": int(diff)
+                })
+                break # فقط اولین هشدار برای هر نقطه
     return alerts
 
 async def send_telegram(msg):
@@ -71,6 +85,9 @@ def send_bale(msg):
     users = get_gist_users("bale_users.json")
     if not users: return
     print("Bale recipients:", len(users))
+    if not BALE_TOKEN:
+        print("  Bale Failed: Token is None")
+        return
     for cid in users.keys():
         url = f"https://tapi.bale.ai/bot{BALE_TOKEN}/sendMessage"
         try:
@@ -84,13 +101,16 @@ async def main():
     print("=" * 60 + "\nهشدار فوری - " + now_jalali() + "\n" + "=" * 60)
     alerts = check_urgent()
     print("Urgent alerts:", len(alerts))
+    
     if not alerts:
         print("No urgent alerts. Nothing sent.")
         return
+        
     msg = "🚨 **هشدار فوری طوفان** 🚨\n\n📅 " + now_jalali() + "\n━━━━━━━━━━━━━━━\n\n"
     for a in alerts:
-        msg += f"⚠️ **{a['point']}**\n   💨 {a['speed']} km/h\n   🕐 {a['time']}\n   ⏳ تا {a['minutes']} دقیقه\n\n"
+        msg += f"⚠️ **{a['point']}**\n   💨 {a['speed']} km/h\n   🕐 {a['time_tehran']}\n   ⏳ تا {a['minutes']} دقیقه\n\n"
     msg += "━━━━━━━━━━━━━━━\n"
+    
     await send_telegram(msg)
     send_bale(msg)
 
