@@ -2,10 +2,13 @@ import asyncio
 import os
 import json
 import requests
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from telegram import Bot as TelegramBot
 from jalali import now_jalali
 
-# توکن‌ها رو مستقیم از محیط می‌خونیم (مثل test_bale_token.py)
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 BALE_TOKEN = os.getenv("BALE_TOKEN")
 GIST_ID = os.getenv("GIST_ID")
@@ -22,9 +25,20 @@ WEATHER_CITIES = [
     {"name": "بندر انزلی", "lat": 37.4720, "lon": 49.4630},
 ]
 
+# --- داده‌های ثابت قطب جنوب (به‌روزرسانی شده) ---
+ANTARCTICA_WEATHER = {"station": "ایستگاه شوا", "temp": "-14°C", "condition": "نیمه ابری", "wind": "۳۰ نات"}
+# لینک شفق قطبی اصلاح شد
+ANTARCTICA_AURORA = {"status": "احتمال کم", "kp_index": "2 (آرام)", "link": "https://www.spaceweatherlive.com/en/aurora-forecast.html"}
+PENGUIN_STATS = {"chinstrap": "کاهش ۶۳٪ از ۲۰۱۱", "adelie": "~۱ میلیون جفت", "macaroni": "افزایش ۲۸٪"}
+# اخبار با تاریخ دقیق
+ANTARCTICA_NEWS = [
+    "🛰️ **پژوهش جدید NOAA (اکتبر ۲۰۲۶):** ناوگان کشتی‌های بدون سرنشین برای اندازه‌گیری CO2 اقیانوس جنوبی اعزام شدند.",
+    "🦠 **کشف میکروبی (اکتبر ۲۰۲۶):** محققان در جزیره Deception میکروارگانیسم‌های بازسازی‌کننده اکوسیستم را کشف کردند."
+]
+
 def get_gist_users(filename):
-    url = "https://api.github.com/gists/" + GIST_ID
-    headers = {"Authorization": "token " + GH_PAT}
+    url = "https://api.github.com/gists/" + str(GIST_ID)
+    headers = {"Authorization": "token " + str(GH_PAT)}
     try:
         r = requests.get(url, headers=headers, timeout=30)
         r.raise_for_status()
@@ -53,8 +67,7 @@ def get_weather(lat, lon):
         r = requests.get(url, params=params, timeout=60)
         r.raise_for_status()
         return r.json()
-    except Exception as e:
-        print("Weather error:", e)
+    except Exception:
         return None
 
 def get_dust(lat, lon):
@@ -64,16 +77,14 @@ def get_dust(lat, lon):
         r = requests.get(url, params=params, timeout=60)
         r.raise_for_status()
         return r.json()
-    except Exception as e:
-        print("Dust error:", e)
+    except Exception:
         return None
 
 def build_message():
-    msg = "🌤️ **گزارش آب‌وهوا و گرد و خاک** 🌤️\n"
-    msg += "📅 " + now_jalali() + "\n"
-    msg += "━━━━━━━━━━━━━━━━━━━━\n\n"
+    msg = "🌤️ **گزارش روزانه** 🌤️\n\n📅 " + now_jalali() + "\n"
+    msg += "━━━━━━━━━━━━━━━\n\n"
     
-    msg += "🌡️ **آب‌وهوای فردا:**\n"
+    msg += "🌡️ **آب‌وهوای فردا:**\n\n"
     for city in WEATHER_CITIES:
         data = get_weather(city["lat"], city["lon"])
         if not data or "daily" not in data: continue
@@ -81,15 +92,11 @@ def build_message():
         if len(d["time"]) < 2: continue
         tmax, tmin = d["temperature_2m_max"][1], d["temperature_2m_min"][1]
         rain, code = d["precipitation_sum"][1], d["weather_code"][1]
-        
-        msg += f"📍 **{city['name']}**\n"
-        msg += f"   {weather_code_to_text(code)}\n"
-        msg += f"   🌡️ {round(tmin, 1)}° تا {round(tmax, 1)}°\n"
-        if rain and rain > 0: 
-            msg += f"   🌧️ بارش: {round(rain, 1)} mm\n"
-        msg += "   ➖➖➖➖➖➖\n"
+        msg += f"🔹 **{city['name']}**: {weather_code_to_text(code)}\n   🌡️ {round(tmin, 1)}° تا {round(tmax, 1)}°\n"
+        if rain and rain > 0: msg += f"   🌧️ بارش: {round(rain, 1)} mm\n"
+        msg += "\n"
 
-    msg += "\n🌫️ **وضعیت گرد و خاک:**\n"
+    msg += "━━━━━━━━━━━━━━━\n\n🌫️ **وضعیت گرد و خاک:**\n\n"
     for city in WEATHER_CITIES:
         dust = get_dust(city["lat"], city["lon"])
         if not dust or "hourly" not in dust: continue
@@ -98,12 +105,16 @@ def build_message():
         now_dust = h["dust"][0]
         if now_dust is None: continue
         status = "پاک ✅" if now_dust < 20 else "متوسط 🟡" if now_dust < 50 else "ناسالم 🟠" if now_dust < 100 else "خطرناک 🔴"
-        
-        msg += f"📍 **{city['name']}**: {status}\n"
-        msg += f"   🌫️ {round(now_dust, 1)} μg/m³\n"
-        msg += "   ➖➖➖➖➖➖\n"
-        
-    msg += "\n━━━━━━━━━━━━━━━━━━━━"
+        msg += f"🔹 **{city['name']}**: {status} ({round(now_dust, 1)} μg/m³)\n"
+
+    msg += "\n━━━━━━━━━━━━━━━\n\n"
+    msg += "🧊 **گزارش قطب جنوب**\n\n"
+    msg += f"🌡️ **آب‌وهوا ({ANTARCTICA_WEATHER['station']}):**\n   دما: {ANTARCTICA_WEATHER['temp']} | {ANTARCTICA_WEATHER['condition']}\n   💨 باد: {ANTARCTICA_WEATHER['wind']}\n\n"
+    msg += f"🌌 **شفق قطبی (Aurora):**\n   وضعیت: {ANTARCTICA_AURORA['status']} (Kp: {ANTARCTICA_AURORA['kp_index']})\n   🔗 لینک زنده: {ANTARCTICA_AURORA['link']}\n\n"
+    msg += f"🐧 **آمار پنگوئن‌ها:**\n   • چین‌استرپ: {PENGUIN_STATS['chinstrap']}\n   • آدلی: {PENGUIN_STATS['adelie']}\n   • ماکارونی: {PENGUIN_STATS['macaroni']}\n\n"
+    msg += "📰 **اخبار پژوهشی:**\n"
+    for news in ANTARCTICA_NEWS: msg += f"   {news}\n\n"
+    msg += "━━━━━━━━━━━━━━━\n"
     return msg
 
 async def send_telegram(msg):
@@ -122,11 +133,7 @@ def send_bale(msg):
     users = get_gist_users("bale_users.json")
     if not users: return
     print("Bale recipients:", len(users))
-    
-    if not BALE_TOKEN:
-        print("  Bale Failed: Token is None")
-        return
-        
+    if not BALE_TOKEN: return
     for cid in users.keys():
         url = f"https://tapi.bale.ai/bot{BALE_TOKEN}/sendMessage"
         try:

@@ -50,15 +50,18 @@ def check_urgent():
         
         for i, t in enumerate(times):
             try:
+                # زمان API رو به تهران تبدیل میکنیم
                 alert_time_tehran = datetime.fromisoformat(t)
                 diff = (alert_time_tehran - now_tehran).total_seconds() / 60
+                
+                # فقط 2 ساعت آینده رو چک کن
                 if diff < 0 or diff > 120: continue
             except Exception: continue
             
             if speeds[i] and speeds[i] > WIND_SPEED_THRESHOLD:
                 alerts.append({
                     "point": p["name"],
-                    "time_tehran": alert_time_tehran.strftime("%Y-%m-%d %H:%M"),
+                    "time_tehran": alert_time_tehran.strftime("%Y-%m-%d %H:%M"), # تبدیل به وقت تهران
                     "speed": round(speeds[i], 1),
                     "minutes": int(diff)
                 })
@@ -81,9 +84,7 @@ def send_bale(msg):
     users = get_gist_users("bale_users.json")
     if not users: return
     print("Bale recipients:", len(users))
-    if not BALE_TOKEN:
-        print("  Bale Failed: Token is None")
-        return
+    if not BALE_TOKEN: return
     for cid in users.keys():
         url = f"https://tapi.bale.ai/bot{BALE_TOKEN}/sendMessage"
         try:
@@ -102,18 +103,15 @@ async def main():
         print("No urgent alerts. Nothing sent.")
         return
         
-    # ✅ اینجا قسمت گرافیکی و مرتب پیام هشدار است
     msg = "🚨 **هشدار فوری طوفان** 🚨\n"
     msg += "📅 " + now_jalali() + "\n"
     msg += "━━━━━━━━━━━━━━━━━━━━\n\n"
-    
     for a in alerts:
         msg += f"⚠️ **{a['point']}**\n"
         msg += f"   💨 سرعت باد: {a['speed']} km/h\n"
         msg += f"   🕐 زمان: {a['time_tehran']}\n"
         msg += f"   ⏳ حدود {a['minutes']} دقیقه دیگر\n"
         msg += "   ➖➖➖➖➖➖\n"
-        
     msg += "\n━━━━━━━━━━━━━━━━━━━━\n"
     
     await send_telegram(msg)
