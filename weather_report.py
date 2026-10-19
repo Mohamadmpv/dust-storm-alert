@@ -25,15 +25,14 @@ WEATHER_CITIES = [
     {"name": "بندر انزلی", "lat": 37.4720, "lon": 49.4630},
 ]
 
-# --- ایستگاه‌های قطب جنوب (دماهای امروز ۱۹ اکتبر ۲۰۲۶) ---
-# منبع: meteoblue, yr.no, weather.com.cn
+# --- ایستگاه‌های قطب جنوب با مختصات دقیق جغرافیایی ---
 ANTARCTICA_STATIONS = [
-    {"name": "Vostok (روسیه)", "temp": "-45°C تا -55°C", "source": "weather.com.cn [citation:3]"},
-    {"name": "Amundsen-Scott (آمریکا)", "temp": "-44°C تا -46°C", "source": "MeteoNews [citation:4]"},
-    {"name": "Novolazarevskaya (روسیه)", "temp": "-14°C تا -22°C", "source": "meteoblue [citation:2]"},
-    {"name": "Maitri (هند)", "temp": "-13°C تا -32°C", "source": "meteoblue [citation:11]"},
-    {"name": "Zhongshan (چین)", "temp": "-12°C تا -18°C", "source": "weather.com.cn [citation:7]"},
-    {"name": "Esperanza (آرژانتین)", "temp": "4°C تا 8°C", "source": "CruisePlanners [citation:19]"},
+    {"name": "Vostok (روسیه)", "temp": "-45°C تا -55°C", "coord": "۷۸°۲۷′ جنوبی، ۱۰۶°۵۰′ شرقی", "source": "weather.com.cn [citation:1]"},
+    {"name": "Amundsen-Scott (آمریکا)", "temp": "-44°C تا -46°C", "coord": "۹۰° جنوبی (قطب جنوب جغرافیایی)", "source": "MeteoNews "},
+    {"name": "Novolazarevskaya (روسیه)", "temp": "-14°C تا -22°C", "coord": "۷۰°۴۶′ جنوبی، ۱۱°۵۰′ شرقی", "source": "meteoblue [citation:9]"},
+    {"name": "Maitri (هند)", "temp": "-13°C تا -32°C", "coord": "۷۰°۴۵′ جنوبی، ۱۱°۴۳′ شرقی", "source": "meteoblue [citation:16]"},
+    {"name": "Zhongshan (چین)", "temp": "-12°C تا -18°C", "coord": "۶۹°۲۲′ جنوبی، ۷۶°۲۲′ شرقی", "source": "weather.com.cn [citation:5]"},
+    {"name": "Esperanza (آرژانتین)", "temp": "4°C تا 8°C", "coord": "۶۳°۲۴′ جنوبی، ۵۶°۵۹′ غربی", "source": "CruisePlanners [citation:6]"},
 ]
 
 # ✅ لینک دوربین زنده معتبر NOAA
@@ -47,17 +46,20 @@ ANTARCTICA_NEWS = [
     {
         "title": "ناوگان کشتی‌های بدون سرنشین برای مطالعه CO2 اقیانوس جنوبی به دور قطب جنوب می‌روند",
         "paragraph": "پروژه COCO2 به رهبری NOAA و مشارکت CSIRO استرالیا، از ۱۹ سپتامبر ۲۰۲۶ با اعزام اولین کشتی بدون سرنشین Saildrone از هوبارت آغاز شد. هدف این ماموریت ۵ ساله، اندازه‌گیری میزان جذب دی‌اکسید کربن توسط اقیانوس جنوبی به ویژه در فصل زمستان است که با کشتی‌های سنتی امکان‌پذیر نیست. این کشتی‌ها به صورت خودکار مسیر خود را دور قطب جنوب طی می‌کنند و داده‌های ارزشمندی برای مدل‌های اقلیمی ارسال می‌کنند.",
-        "link": "https://www.pmel.noaa.gov/news-and-media/highlights/saildrone-research-fleet-circle-antarctica-5-years [citation:18]"
+        "link": "https://www.pmel.noaa.gov/news-and-media/highlights/saildrone-research-fleet-circle-antarctica-5-years"
     },
     {
         "title": "اکتشافات باستان‌شناسی زیر آب در قطب جنوب برای اولین بار",
         "paragraph": "سی و پنجمین سفر تحقیقاتی بلغارستان به قطب جنوب، شامل اولین پروژه باستان‌شناسی زیر آب این کشور خواهد بود. تیم تحقیقاتی قصد دارد با استفاده از سونار و ربات‌های زیرآبی، بقایای کشتی‌های غرق شده در آب‌های کم‌عمق اطراف قطب جنوب را شناسایی کند. با توجه به دمای بسیار پایین آب، احتمال سالم ماندن این بقایا بالاست. این پروژه همچنین به مطالعه فعالیت‌های آتشفشانی و لرزه‌ای در جزایر شتلند جنوبی خواهد پرداخت.",
-        "link": "https://www.bta.bg/en/news/1226848-35th-bulgarian-antarctic-expedition-to-expand-scientific-work-at-base-and-aboard [citation:6]"
+        "link": "https://www.bta.bg/en/news/1226848-35th-bulgarian-antarctic-expedition-to-expand-scientific-work-at-base-and-aboard"
     }
 ]
 
+# ✅ اخبار حیات وحش (پنگوئن‌ها، بی‌مهرگان، کریل)
 PENGUIN_NEWS = [
-    "🐧 **هشدار جدی (اکتبر ۲۰۲۶):** بزرگ‌ترین کلنی پنگوئن‌های چین‌استرپ در جزیره زاوودوفسکی از سال ۲۰۱۱ تاکنون **۶۳ درصد** کاهش یافته است. علت: کاهش کریل به دلیل گرمایش اقیانوس‌ها."
+    "🐧 **هشدار جدی (اکتبر ۲۰۲۶):** بزرگ‌ترین کلنی پنگوئن‌های چین‌استرپ در جزیره زاوودوفسکی از سال ۲۰۱۱ تاکنون **۶۳ درصد** کاهش یافته است. علت: کاهش کریل به دلیل گرمایش اقیانوس‌ها.",
+    "🦠 **حیات بی‌مهرگان جنوبگان:** گونه‌هایی از هیره‌های میکروسکوپی مانند *Alaskozetes antarcticus* (بندپای خشکی‌زی) تا عرض ۷۱ درجه جنوبی یافت می‌شوند [citation:19]. مگس‌ریزه بدون پرواز *Belgica antarctica* (۶ میلی‌متر) بزرگ‌ترین جانور کاملاً زمینی جنوبگان است و در شبه‌جزیره جنوبی زندگی می‌کند [citation:27].",
+    "🦐 **کریل جنوبگان (*Euphausia superba*):** این گونه کلیدی که غذای اصلی نهنگ‌ها، فک‌ها و پنگوئن‌هاست، در اقیانوس جنوبی زندگی می‌کند و توانایی شگفت‌انگیزی در کاهش اندازه بدن برای زنده ماندن در زمستان دارد [citation:7]."
 ]
 
 def get_gist_users(filename):
@@ -139,11 +141,11 @@ def build_message():
     
     msg += "🌡️ **دمای ایستگاه‌های تحقیقاتی (امروز):**\n"
     for st in ANTARCTICA_STATIONS:
-        msg += f"   • **{st['name']}**: {st['temp']}\n     منبع: {st['source']}\n"
+        msg += f"   • **{st['name']}**\n     دما: {st['temp']}\n     مختصات: {st['coord']}\n     منبع: {st['source']}\n"
     msg += "\n"
 
     if PENGUIN_NEWS:
-        msg += "🐧 **اخبار پنگوئن‌ها:**\n"
+        msg += "🐾 **اخبار حیات وحش:**\n"
         for news in PENGUIN_NEWS:
             msg += f"   {news}\n\n"
 
