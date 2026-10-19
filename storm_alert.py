@@ -31,7 +31,8 @@ def get_gist_users(filename):
 
 def get_wind(lat, lon):
     url = "https://api.open-meteo.com/v1/forecast"
-    params = {"latitude": lat, "longitude": lon, "hourly": "wind_speed_10m", "forecast_days": 2, "wind_speed_unit": "kmh", "timezone": "Asia/Tehran"}
+    # اینجا timezone را حذف می‌کنیم تا داده‌ها به UTC برگردند
+    params = {"latitude": lat, "longitude": lon, "hourly": "wind_speed_10m", "forecast_days": 2, "wind_speed_unit": "kmh"}
     try:
         r = requests.get(url, params=params, timeout=60)
         r.raise_for_status()
@@ -50,8 +51,10 @@ def check_urgent():
         
         for i, t in enumerate(times):
             try:
-                # داده‌های API از قبل با timezone=Asia/Tehran تنظیم شده‌اند
-                alert_time_tehran = datetime.fromisoformat(t)
+                # زمان API به UTC است
+                alert_time_utc = datetime.fromisoformat(t)
+                # تبدیل به وقت تهران
+                alert_time_tehran = alert_time_utc + timedelta(hours=3, minutes=30)
                 diff = (alert_time_tehran - now_tehran).total_seconds() / 60
                 
                 if diff < 0 or diff > 120: continue
@@ -60,7 +63,6 @@ def check_urgent():
             if speeds[i] and speeds[i] > WIND_SPEED_THRESHOLD:
                 alerts.append({
                     "point": p["name"],
-                    # نمایش زمان به وقت تهران
                     "time_tehran": alert_time_tehran.strftime("%Y-%m-%d %H:%M"),
                     "speed": round(speeds[i], 1),
                     "minutes": int(diff)

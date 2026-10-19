@@ -25,30 +25,34 @@ WEATHER_CITIES = [
     {"name": "بندر انزلی", "lat": 37.4720, "lon": 49.4630},
 ]
 
-# --- داده‌های قطب جنوب ---
-# لینک دوربین زنده معتبر NOAA (به‌روزرسانی هر ۱۵ دقیقه)
+# ✅ لینک دوربین زنده معتبر NOAA (به‌روزرسانی هر ۱۵ دقیقه)
 ANTARCTICA_WEBCAM = {
     "name": "دوربین زنده ایستگاه Amundsen-Scott (NOAA)",
-    "link": "https://www.gml.noaa.gov/obop/spo/livecamera.html"
+    "link": "https://gmd-int.cmdl.noaa.gov/obop/spo/livecamera.html"
 }
 
-# دمای ایستگاه‌های کلیدی (بر اساس داده‌های موجود)
-ANTARCTICA_TEMPS = [
-    {"name": "Vostok (روسیه)", "temp": "-55°C", "source": "yr.no [citation:3]"},
-    {"name": "Marambio (آرژانتین)", "temp": "3°C", "source": "Tide-Forecast [citation:4]"},
-    {"name": "Esperanza (آرژانتین)", "temp": "3°C", "source": "Tide-Forecast [citation:16]"},
-]
-
-# اخبار و لینک‌های معتبر (اکتبر ۲۰۲۶)
+# ✅ اخبار با لینک زیر هر خبر (طبق فرمت درخواستی)
 ANTARCTICA_NEWS_LINKS = [
-    {"title": "کشف ارتباط یخ‌های قطب جنوب با اقیانوس‌های گرمسیری (Nature)", "link": "https://doi.org/10.1038/s41586-026-10912-x [citation:24]"},
-    {"title": "هشدار آنفولانزای پرندگان در فُک‌های جزیره Macquarie (Science)", "link": "https://www.science.org/ [citation:29]"},
-    {"title": "ماموریت جدید NOAA برای اندازه‌گیری CO2 اقیانوس جنوبی", "link": "https://www.noaa.gov/ [citation:29]"},
-    {"title": "وضعیت لایه ازن بر فراز قطب جنوب (NASA)", "link": "https://ozonewatch.gsfc.nasa.gov/ [citation:35]"},
+    {
+        "title": "افزایش موقت یخ‌های دریایی قطب جنوب با گرم شدن اقیانوس‌های گرمسیری مرتبط است (Nature, اکتبر ۲۰۲۶)",
+        "link": "https://www.nature.com/articles/s43247-026-03242-3"
+    },
+    {
+        "title": "هشدار آنفولانزای پرندگان در فُک‌های جزیره Macquarie (Science, اکتبر ۲۰۲۶)",
+        "link": "https://www.science.org/"
+    },
+    {
+        "title": "ماموریت جدید NOAA برای اندازه‌گیری CO2 اقیانوس جنوبی (اکتبر ۲۰۲۶)",
+        "link": "https://www.noaa.gov/"
+    },
+    {
+        "title": "وضعیت لایه ازن بر فراز قطب جنوب (NASA, اکتبر ۲۰۲۶)",
+        "link": "https://ozonewatch.gsfc.nasa.gov/"
+    },
 ]
 
 PENGUIN_NEWS = [
-    "🐧 **هشدار جدی (اکتبر ۲۰۲۶):** بزرگ‌ترین کلنی پنگوئن‌های چین‌استرپ در جزیره زاوودوفسکی از سال ۲۰۱۱ تاکنون **۶۳ درصد** کاهش یافته است. علت: کاهش کریل به دلیل گرمایش اقیانوس‌ها. [citation:29]"
+    "🐧 **هشدار جدی (اکتبر ۲۰۲۶):** بزرگ‌ترین کلنی پنگوئن‌های چین‌استرپ در جزیره زاوودوفسکی از سال ۲۰۱۱ تاکنون **۶۳ درصد** کاهش یافته است. علت: کاهش کریل به دلیل گرمایش اقیانوس‌ها. "
 ]
 
 def get_gist_users(filename):
@@ -127,11 +131,6 @@ def build_message():
     msg += "🧊 **گزارش قطب جنوب**\n\n"
     
     msg += f"📹 **{ANTARCTICA_WEBCAM['name']}:**\n   🔗 {ANTARCTICA_WEBCAM['link']}\n\n"
-    
-    msg += "🌡️ **دمای ایستگاه‌ها:**\n"
-    for st in ANTARCTICA_TEMPS:
-        msg += f"   • {st['name']}: {st['temp']}\n"
-    msg += "\n"
 
     if PENGUIN_NEWS:
         msg += "🐧 **اخبار پنگوئن‌ها:**\n"
@@ -140,9 +139,9 @@ def build_message():
 
     msg += "📰 **اخبار و لینک‌های پژوهشی:**\n"
     for item in ANTARCTICA_NEWS_LINKS:
-        msg += f"   • {item['title']}\n     🔗 {item['link']}\n"
+        msg += f"   • {item['title']}\n     🔗 {item['link']}\n\n"
         
-    msg += "\n━━━━━━━━━━━━━━━\n"
+    msg += "━━━━━━━━━━━━━━━\n"
     return msg
 
 async def send_telegram(msg):
