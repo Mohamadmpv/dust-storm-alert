@@ -25,13 +25,22 @@ WEATHER_CITIES = [
     {"name": "بندر انزلی", "lat": 37.4720, "lon": 49.4630},
 ]
 
-# --- داده‌های ثابت قطب جنوب (به‌روزرسانی شده) ---
+# --- داده‌های قطب جنوب ---
 ANTARCTICA_WEATHER = {"station": "ایستگاه شوا", "temp": "-14°C", "condition": "نیمه ابری", "wind": "۳۰ نات"}
-# لینک شفق قطبی اصلاح شد
-ANTARCTICA_AURORA = {"status": "احتمال کم", "kp_index": "2 (آرام)", "link": "https://www.spaceweatherlive.com/en/aurora"}
-PENGUIN_STATS = {"chinstrap": "کاهش ۶۳٪ از ۲۰۱۱", "adelie": "~۱ میلیون جفت", "macaroni": "افزایش ۲۸٪"}
-# اخبار با تاریخ دقیق
-ANTARCTICA_NEWS = [
+
+# لینک دوربین زنده (وب‌کم) ایستگاه تحقیقاتی در قطب جنوب
+ANTARCTICA_WEBCAM = {
+    "name": "دوربین زنده ایستگاه McMurdo (آمریکا)",
+    "link": "https://www.usap.gov/videoclipsandmaps/mcmurdoStream.cfm" # لینک وب‌کم زنده
+}
+
+# اخبار پنگوئن‌ها (فقط وقتی خبر جدیدی باشد، به لیست اضافه می‌شود)
+PENGUIN_NEWS = [
+    "🐧 **هشدار جدی (اکتبر ۲۰۲۶):** بزرگ‌ترین کلنی پنگوئن‌های چین‌استرپ در جزیره زاوودوفسکی از سال ۲۰۱۱ تاکنون **۶۳ درصد** کاهش یافته است. علت: کاهش کریل به دلیل گرمایش اقیانوس‌ها.",
+]
+
+# اخبار پژوهشی جدید
+ANTARCTICA_RESEARCH_NEWS = [
     "🛰️ **پژوهش جدید NOAA (اکتبر ۲۰۲۶):** ناوگان کشتی‌های بدون سرنشین برای اندازه‌گیری CO2 اقیانوس جنوبی اعزام شدند.",
     "🦠 **کشف میکروبی (اکتبر ۲۰۲۶):** محققان در جزیره Deception میکروارگانیسم‌های بازسازی‌کننده اکوسیستم را کشف کردند."
 ]
@@ -107,13 +116,26 @@ def build_message():
         status = "پاک ✅" if now_dust < 20 else "متوسط 🟡" if now_dust < 50 else "ناسالم 🟠" if now_dust < 100 else "خطرناک 🔴"
         msg += f"🔹 **{city['name']}**: {status} ({round(now_dust, 1)} μg/m³)\n"
 
+    # --- بخش قطب جنوب ---
     msg += "\n━━━━━━━━━━━━━━━\n\n"
     msg += "🧊 **گزارش قطب جنوب**\n\n"
+    
+    # لینک وب‌کم زنده
+    msg += f"📹 **{ANTARCTICA_WEBCAM['name']}:**\n   🔗 برای مشاهده زنده کلیک کنید: {ANTARCTICA_WEBCAM['link']}\n\n"
+    
     msg += f"🌡️ **آب‌وهوا ({ANTARCTICA_WEATHER['station']}):**\n   دما: {ANTARCTICA_WEATHER['temp']} | {ANTARCTICA_WEATHER['condition']}\n   💨 باد: {ANTARCTICA_WEATHER['wind']}\n\n"
-    msg += f"🌌 **شفق قطبی (Aurora):**\n   وضعیت: {ANTARCTICA_AURORA['status']} (Kp: {ANTARCTICA_AURORA['kp_index']})\n   🔗 لینک زنده: {ANTARCTICA_AURORA['link']}\n\n"
-    msg += f"🐧 **آمار پنگوئن‌ها:**\n   • چین‌استرپ: {PENGUIN_STATS['chinstrap']}\n   • آدلی: {PENGUIN_STATS['adelie']}\n   • ماکارونی: {PENGUIN_STATS['macaroni']}\n\n"
-    msg += "📰 **اخبار پژوهشی:**\n"
-    for news in ANTARCTICA_NEWS: msg += f"   {news}\n\n"
+
+    # اخبار پنگوئن‌ها (فقط اگر خبری باشد)
+    if PENGUIN_NEWS:
+        msg += "🐧 **اخبار مهم درباره پنگوئن‌ها:**\n"
+        for news in PENGUIN_NEWS:
+            msg += f"   {news}\n\n"
+
+    # اخبار پژوهشی
+    msg += "📰 **اخبار پژوهشی جدید:**\n"
+    for news in ANTARCTICA_RESEARCH_NEWS:
+        msg += f"   {news}\n\n"
+        
     msg += "━━━━━━━━━━━━━━━\n"
     return msg
 
