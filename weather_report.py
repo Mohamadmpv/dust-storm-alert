@@ -26,26 +26,29 @@ WEATHER_CITIES = [
 ]
 
 # --- داده‌های قطب جنوب ---
-ANTARCTICA_WEATHER = {"station": "ایستگاه شوا", "temp": "-14°C", "condition": "نیمه ابری", "wind": "۳۰ نات"}
-
-# ✅ لینک دوربین زنده ایستگاه قطب جنوب NOAA (به‌روزرسانی هر ۱۵ دقیقه)
+# لینک دوربین زنده معتبر NOAA (به‌روزرسانی هر ۱۵ دقیقه)
 ANTARCTICA_WEBCAM = {
     "name": "دوربین زنده ایستگاه Amundsen-Scott (NOAA)",
-    "link": "https://gmd-int.cmdl.noaa.gov/obop/spo/livecamera.html"
+    "link": "https://www.gml.noaa.gov/obop/spo/livecamera.html"
 }
 
-# ✅ اخبار پویا و معتبر از منابع علمی (اکتبر ۲۰۲۶)
-# این لیست را می‌توانید هر چند وقت یکبار با اخبار جدیدتر به‌روزرسانی کنید
-ANTARCTICA_NEWS = [
-    "🧊 **تحقیق جدید در Nature (اکتبر ۲۰۲۶):** دانشمندان کشف کردند که افزایش موقت یخ‌های دریایی قطب جنوب با گرم شدن اقیانوس‌های گرمسیری مرتبط است. با این حال، این موضوع نشان‌دهنده معکوس شدن روند بلندمدت ذوب یخ‌ها نیست. [citation:1]",
-    "🦭 **هشدار آنفولانزای پرندگان (Science, اکتبر ۲۰۲۶):** استرالیا به دلیل نگرانی از شیوع ویروس H5N1 در فُک‌های فیلی، ایستگاه تحقیقاتی خود در جزیره Macquarie را تخلیه می‌کند. کارشناسان احتمال می‌دهند این ویروس به زودی به سواحل قطب جنوب برسد. [citation:2]",
-    "🛰️ **ماموریت جدید NOAA (اکتبر ۲۰۲۶):** ناوگان کشتی‌های بدون سرنشین (Saildrone) برای یک ماموریت ۵ ساله دور قطب جنوب حرکت کردند تا میزان جذب دی‌اکسید کربن اقیانوس جنوبی را در زمستان اندازه‌گیری کنند. [citation:17]",
-    "🌍 **وضعیت لایه ازن (NASA, اکتبر ۲۰۲۶):** نقشه‌های جدید ناسا نشان می‌دهد که حفره لایه ازن بر فراز قطب جنوب در اکتبر ۲۰۲۶ همچنان فعال است و داده‌های آن توسط ماهواره Suomi NPP در حال جمع‌آوری است. [citation:3]",
+# دمای ایستگاه‌های کلیدی (بر اساس داده‌های موجود)
+ANTARCTICA_TEMPS = [
+    {"name": "Vostok (روسیه)", "temp": "-55°C", "source": "yr.no [citation:3]"},
+    {"name": "Marambio (آرژانتین)", "temp": "3°C", "source": "Tide-Forecast [citation:4]"},
+    {"name": "Esperanza (آرژانتین)", "temp": "3°C", "source": "Tide-Forecast [citation:16]"},
 ]
 
-# ✅ اخبار پنگوئن‌ها (فقط وقتی خبر جدیدی باشد)
+# اخبار و لینک‌های معتبر (اکتبر ۲۰۲۶)
+ANTARCTICA_NEWS_LINKS = [
+    {"title": "کشف ارتباط یخ‌های قطب جنوب با اقیانوس‌های گرمسیری (Nature)", "link": "https://doi.org/10.1038/s41586-026-10912-x [citation:24]"},
+    {"title": "هشدار آنفولانزای پرندگان در فُک‌های جزیره Macquarie (Science)", "link": "https://www.science.org/ [citation:29]"},
+    {"title": "ماموریت جدید NOAA برای اندازه‌گیری CO2 اقیانوس جنوبی", "link": "https://www.noaa.gov/ [citation:29]"},
+    {"title": "وضعیت لایه ازن بر فراز قطب جنوب (NASA)", "link": "https://ozonewatch.gsfc.nasa.gov/ [citation:35]"},
+]
+
 PENGUIN_NEWS = [
-    "🐧 **هشدار جدی (اکتبر ۲۰۲۶):** مطالعات جدید نشان می‌دهد بزرگ‌ترین کلنی پنگوئن‌های چین‌استرپ در جزیره زاوودوفسکی از سال ۲۰۱۱ تاکنون **۶۳ درصد** کاهش یافته است. علت اصلی، کاهش غذای اصلی آن‌ها (کریل) به دلیل گرمایش اقیانوس‌ها است. [citation:9]"
+    "🐧 **هشدار جدی (اکتبر ۲۰۲۶):** بزرگ‌ترین کلنی پنگوئن‌های چین‌استرپ در جزیره زاوودوفسکی از سال ۲۰۱۱ تاکنون **۶۳ درصد** کاهش یافته است. علت: کاهش کریل به دلیل گرمایش اقیانوس‌ها. [citation:29]"
 ]
 
 def get_gist_users(filename):
@@ -123,23 +126,23 @@ def build_message():
     msg += "\n━━━━━━━━━━━━━━━\n\n"
     msg += "🧊 **گزارش قطب جنوب**\n\n"
     
-    # لینک وب‌کم زنده
-    msg += f"📹 **{ANTARCTICA_WEBCAM['name']}:**\n   🔗 برای مشاهده زنده کلیک کنید: {ANTARCTICA_WEBCAM['link']}\n\n"
+    msg += f"📹 **{ANTARCTICA_WEBCAM['name']}:**\n   🔗 {ANTARCTICA_WEBCAM['link']}\n\n"
     
-    msg += f"🌡️ **آب‌وهوا ({ANTARCTICA_WEATHER['station']}):**\n   دما: {ANTARCTICA_WEATHER['temp']} | {ANTARCTICA_WEATHER['condition']}\n   💨 باد: {ANTARCTICA_WEATHER['wind']}\n\n"
+    msg += "🌡️ **دمای ایستگاه‌ها:**\n"
+    for st in ANTARCTICA_TEMPS:
+        msg += f"   • {st['name']}: {st['temp']}\n"
+    msg += "\n"
 
-    # اخبار پنگوئن‌ها (فقط اگر خبری باشد)
     if PENGUIN_NEWS:
-        msg += "🐧 **اخبار مهم درباره پنگوئن‌ها:**\n"
+        msg += "🐧 **اخبار پنگوئن‌ها:**\n"
         for news in PENGUIN_NEWS:
             msg += f"   {news}\n\n"
 
-    # اخبار پژوهشی جدید
-    msg += "📰 **اخبار پژوهشی جدید:**\n"
-    for news in ANTARCTICA_NEWS:
-        msg += f"   {news}\n\n"
+    msg += "📰 **اخبار و لینک‌های پژوهشی:**\n"
+    for item in ANTARCTICA_NEWS_LINKS:
+        msg += f"   • {item['title']}\n     🔗 {item['link']}\n"
         
-    msg += "━━━━━━━━━━━━━━━\n"
+    msg += "\n━━━━━━━━━━━━━━━\n"
     return msg
 
 async def send_telegram(msg):

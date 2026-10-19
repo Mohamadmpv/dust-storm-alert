@@ -50,18 +50,18 @@ def check_urgent():
         
         for i, t in enumerate(times):
             try:
-                # زمان API رو به تهران تبدیل میکنیم
+                # داده‌های API از قبل با timezone=Asia/Tehran تنظیم شده‌اند
                 alert_time_tehran = datetime.fromisoformat(t)
                 diff = (alert_time_tehran - now_tehran).total_seconds() / 60
                 
-                # فقط 2 ساعت آینده رو چک کن
                 if diff < 0 or diff > 120: continue
             except Exception: continue
             
             if speeds[i] and speeds[i] > WIND_SPEED_THRESHOLD:
                 alerts.append({
                     "point": p["name"],
-                    "time_tehran": alert_time_tehran.strftime("%Y-%m-%d %H:%M"), # تبدیل به وقت تهران
+                    # نمایش زمان به وقت تهران
+                    "time_tehran": alert_time_tehran.strftime("%Y-%m-%d %H:%M"),
                     "speed": round(speeds[i], 1),
                     "minutes": int(diff)
                 })
@@ -109,7 +109,7 @@ async def main():
     for a in alerts:
         msg += f"⚠️ **{a['point']}**\n"
         msg += f"   💨 سرعت باد: {a['speed']} km/h\n"
-        msg += f"   🕐 زمان: {a['time_tehran']}\n"
+        msg += f"   🕐 زمان (تهران): {a['time_tehran']}\n"
         msg += f"   ⏳ حدود {a['minutes']} دقیقه دیگر\n"
         msg += "   ➖➖➖➖➖➖\n"
     msg += "\n━━━━━━━━━━━━━━━━━━━━\n"
