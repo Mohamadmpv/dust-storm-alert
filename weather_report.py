@@ -25,34 +25,39 @@ WEATHER_CITIES = [
     {"name": "بندر انزلی", "lat": 37.4720, "lon": 49.4630},
 ]
 
-# ✅ لینک دوربین زنده معتبر NOAA (به‌روزرسانی هر ۱۵ دقیقه)
+# --- ایستگاه‌های قطب جنوب (دماهای امروز ۱۹ اکتبر ۲۰۲۶) ---
+# منبع: meteoblue, yr.no, weather.com.cn
+ANTARCTICA_STATIONS = [
+    {"name": "Vostok (روسیه)", "temp": "-45°C تا -55°C", "source": "weather.com.cn [citation:3]"},
+    {"name": "Amundsen-Scott (آمریکا)", "temp": "-44°C تا -46°C", "source": "MeteoNews [citation:4]"},
+    {"name": "Novolazarevskaya (روسیه)", "temp": "-14°C تا -22°C", "source": "meteoblue [citation:2]"},
+    {"name": "Maitri (هند)", "temp": "-13°C تا -32°C", "source": "meteoblue [citation:11]"},
+    {"name": "Zhongshan (چین)", "temp": "-12°C تا -18°C", "source": "weather.com.cn [citation:7]"},
+    {"name": "Esperanza (آرژانتین)", "temp": "4°C تا 8°C", "source": "CruisePlanners [citation:19]"},
+]
+
+# ✅ لینک دوربین زنده معتبر NOAA
 ANTARCTICA_WEBCAM = {
     "name": "دوربین زنده ایستگاه Amundsen-Scott (NOAA)",
     "link": "https://gmd-int.cmdl.noaa.gov/obop/spo/livecamera.html"
 }
 
-# ✅ اخبار با لینک زیر هر خبر (طبق فرمت درخواستی)
-ANTARCTICA_NEWS_LINKS = [
+# ✅ اخبار با پاراگراف و لینک زیر هر خبر
+ANTARCTICA_NEWS = [
     {
-        "title": "افزایش موقت یخ‌های دریایی قطب جنوب با گرم شدن اقیانوس‌های گرمسیری مرتبط است (Nature, اکتبر ۲۰۲۶)",
-        "link": "https://www.nature.com/articles/s43247-026-03242-3"
+        "title": "ناوگان کشتی‌های بدون سرنشین برای مطالعه CO2 اقیانوس جنوبی به دور قطب جنوب می‌روند",
+        "paragraph": "پروژه COCO2 به رهبری NOAA و مشارکت CSIRO استرالیا، از ۱۹ سپتامبر ۲۰۲۶ با اعزام اولین کشتی بدون سرنشین Saildrone از هوبارت آغاز شد. هدف این ماموریت ۵ ساله، اندازه‌گیری میزان جذب دی‌اکسید کربن توسط اقیانوس جنوبی به ویژه در فصل زمستان است که با کشتی‌های سنتی امکان‌پذیر نیست. این کشتی‌ها به صورت خودکار مسیر خود را دور قطب جنوب طی می‌کنند و داده‌های ارزشمندی برای مدل‌های اقلیمی ارسال می‌کنند.",
+        "link": "https://www.pmel.noaa.gov/news-and-media/highlights/saildrone-research-fleet-circle-antarctica-5-years [citation:18]"
     },
     {
-        "title": "هشدار آنفولانزای پرندگان در فُک‌های جزیره Macquarie (Science, اکتبر ۲۰۲۶)",
-        "link": "https://www.science.org/"
-    },
-    {
-        "title": "ماموریت جدید NOAA برای اندازه‌گیری CO2 اقیانوس جنوبی (اکتبر ۲۰۲۶)",
-        "link": "https://www.noaa.gov/"
-    },
-    {
-        "title": "وضعیت لایه ازن بر فراز قطب جنوب (NASA, اکتبر ۲۰۲۶)",
-        "link": "https://ozonewatch.gsfc.nasa.gov/"
-    },
+        "title": "اکتشافات باستان‌شناسی زیر آب در قطب جنوب برای اولین بار",
+        "paragraph": "سی و پنجمین سفر تحقیقاتی بلغارستان به قطب جنوب، شامل اولین پروژه باستان‌شناسی زیر آب این کشور خواهد بود. تیم تحقیقاتی قصد دارد با استفاده از سونار و ربات‌های زیرآبی، بقایای کشتی‌های غرق شده در آب‌های کم‌عمق اطراف قطب جنوب را شناسایی کند. با توجه به دمای بسیار پایین آب، احتمال سالم ماندن این بقایا بالاست. این پروژه همچنین به مطالعه فعالیت‌های آتشفشانی و لرزه‌ای در جزایر شتلند جنوبی خواهد پرداخت.",
+        "link": "https://www.bta.bg/en/news/1226848-35th-bulgarian-antarctic-expedition-to-expand-scientific-work-at-base-and-aboard [citation:6]"
+    }
 ]
 
 PENGUIN_NEWS = [
-    "🐧 **هشدار جدی (اکتبر ۲۰۲۶):** بزرگ‌ترین کلنی پنگوئن‌های چین‌استرپ در جزیره زاوودوفسکی از سال ۲۰۱۱ تاکنون **۶۳ درصد** کاهش یافته است. علت: کاهش کریل به دلیل گرمایش اقیانوس‌ها. "
+    "🐧 **هشدار جدی (اکتبر ۲۰۲۶):** بزرگ‌ترین کلنی پنگوئن‌های چین‌استرپ در جزیره زاوودوفسکی از سال ۲۰۱۱ تاکنون **۶۳ درصد** کاهش یافته است. علت: کاهش کریل به دلیل گرمایش اقیانوس‌ها."
 ]
 
 def get_gist_users(filename):
@@ -103,7 +108,7 @@ def build_message():
     msg = "🌤️ **گزارش روزانه** 🌤️\n\n📅 " + now_jalali() + "\n"
     msg += "━━━━━━━━━━━━━━━\n\n"
     
-    msg += "🌡️ **آب‌وهوای فردا:**\n\n"
+    msg += "🌡️ **آب‌وهوای فردا (ایران):**\n\n"
     for city in WEATHER_CITIES:
         data = get_weather(city["lat"], city["lon"])
         if not data or "daily" not in data: continue
@@ -131,15 +136,22 @@ def build_message():
     msg += "🧊 **گزارش قطب جنوب**\n\n"
     
     msg += f"📹 **{ANTARCTICA_WEBCAM['name']}:**\n   🔗 {ANTARCTICA_WEBCAM['link']}\n\n"
+    
+    msg += "🌡️ **دمای ایستگاه‌های تحقیقاتی (امروز):**\n"
+    for st in ANTARCTICA_STATIONS:
+        msg += f"   • **{st['name']}**: {st['temp']}\n     منبع: {st['source']}\n"
+    msg += "\n"
 
     if PENGUIN_NEWS:
         msg += "🐧 **اخبار پنگوئن‌ها:**\n"
         for news in PENGUIN_NEWS:
             msg += f"   {news}\n\n"
 
-    msg += "📰 **اخبار و لینک‌های پژوهشی:**\n"
-    for item in ANTARCTICA_NEWS_LINKS:
-        msg += f"   • {item['title']}\n     🔗 {item['link']}\n\n"
+    msg += "📰 **اخبار پژوهشی جدید:**\n\n"
+    for item in ANTARCTICA_NEWS:
+        msg += f"**{item['title']}**\n"
+        msg += f"{item['paragraph']}\n"
+        msg += f"🔗 {item['link']}\n\n"
         
     msg += "━━━━━━━━━━━━━━━\n"
     return msg
