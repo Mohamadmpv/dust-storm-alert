@@ -28,7 +28,7 @@ WEATHER_CITIES = [
 # --- داده‌های ثابت قطب جنوب (به‌روزرسانی شده) ---
 ANTARCTICA_WEATHER = {"station": "ایستگاه شوا", "temp": "-14°C", "condition": "نیمه ابری", "wind": "۳۰ نات"}
 # لینک شفق قطبی اصلاح شد
-ANTARCTICA_AURORA = {"status": "احتمال کم", "kp_index": "2 (آرام)", "link": "https://www.spaceweatherlive.com/en/aurora-forecast.html"}
+ANTARCTICA_AURORA = {"status": "احتمال کم", "kp_index": "2 (آرام)", "link": "https://www.spaceweatherlive.com/en/aurora"}
 PENGUIN_STATS = {"chinstrap": "کاهش ۶۳٪ از ۲۰۱۱", "adelie": "~۱ میلیون جفت", "macaroni": "افزایش ۲۸٪"}
 # اخبار با تاریخ دقیق
 ANTARCTICA_NEWS = [
