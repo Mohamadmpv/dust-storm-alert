@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from telegram import Bot as TelegramBot
+import notifier
 from jalali import now_jalali
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -14,6 +14,7 @@ BALE_TOKEN = os.getenv("BALE_TOKEN")
 GIST_ID = os.getenv("GIST_ID")
 GH_PAT = os.getenv("GH_PAT")
 
+# --- شهرهای ایران ---
 WEATHER_CITIES = [
     {"name": "تهران",     "lat": 35.6892, "lon": 51.3890},
     {"name": "تبریز",     "lat": 38.0800, "lon": 46.2919},
@@ -24,55 +25,6 @@ WEATHER_CITIES = [
     {"name": "چابهار",    "lat": 25.2900, "lon": 60.6430},
     {"name": "بندر انزلی", "lat": 37.4720, "lon": 49.4630},
 ]
-
-# --- ایستگاه‌های قطب جنوب با مختصات دقیق جغرافیایی ---
-ANTARCTICA_STATIONS = [
-    {"name": "Vostok (روسیه)", "temp": "-45°C تا -55°C", "coord": "۷۸°۲۷′ جنوبی، ۱۰۶°۵۰′ شرقی", "source": "weather.com.cn [citation:1]"},
-    {"name": "Amundsen-Scott (آمریکا)", "temp": "-44°C تا -46°C", "coord": "۹۰° جنوبی (قطب جنوب جغرافیایی)", "source": "MeteoNews "},
-    {"name": "Novolazarevskaya (روسیه)", "temp": "-14°C تا -22°C", "coord": "۷۰°۴۶′ جنوبی، ۱۱°۵۰′ شرقی", "source": "meteoblue [citation:9]"},
-    {"name": "Maitri (هند)", "temp": "-13°C تا -32°C", "coord": "۷۰°۴۵′ جنوبی، ۱۱°۴۳′ شرقی", "source": "meteoblue [citation:16]"},
-    {"name": "Zhongshan (چین)", "temp": "-12°C تا -18°C", "coord": "۶۹°۲۲′ جنوبی، ۷۶°۲۲′ شرقی", "source": "weather.com.cn [citation:5]"},
-    {"name": "Esperanza (آرژانتین)", "temp": "4°C تا 8°C", "coord": "۶۳°۲۴′ جنوبی، ۵۶°۵۹′ غربی", "source": "CruisePlanners [citation:6]"},
-]
-
-# ✅ لینک دوربین زنده معتبر NOAA
-ANTARCTICA_WEBCAM = {
-    "name": "دوربین زنده ایستگاه Amundsen-Scott (NOAA)",
-    "link": "https://gmd-int.cmdl.noaa.gov/obop/spo/livecamera.html"
-}
-
-# ✅ اخبار با پاراگراف و لینک زیر هر خبر
-ANTARCTICA_NEWS = [
-    {
-        "title": "ناوگان کشتی‌های بدون سرنشین برای مطالعه CO2 اقیانوس جنوبی به دور قطب جنوب می‌روند",
-        "paragraph": "پروژه COCO2 به رهبری NOAA و مشارکت CSIRO استرالیا، از ۱۹ سپتامبر ۲۰۲۶ با اعزام اولین کشتی بدون سرنشین Saildrone از هوبارت آغاز شد. هدف این ماموریت ۵ ساله، اندازه‌گیری میزان جذب دی‌اکسید کربن توسط اقیانوس جنوبی به ویژه در فصل زمستان است که با کشتی‌های سنتی امکان‌پذیر نیست. این کشتی‌ها به صورت خودکار مسیر خود را دور قطب جنوب طی می‌کنند و داده‌های ارزشمندی برای مدل‌های اقلیمی ارسال می‌کنند.",
-        "link": "https://www.pmel.noaa.gov/news-and-media/highlights/saildrone-research-fleet-circle-antarctica-5-years"
-    },
-    {
-        "title": "اکتشافات باستان‌شناسی زیر آب در قطب جنوب برای اولین بار",
-        "paragraph": "سی و پنجمین سفر تحقیقاتی بلغارستان به قطب جنوب، شامل اولین پروژه باستان‌شناسی زیر آب این کشور خواهد بود. تیم تحقیقاتی قصد دارد با استفاده از سونار و ربات‌های زیرآبی، بقایای کشتی‌های غرق شده در آب‌های کم‌عمق اطراف قطب جنوب را شناسایی کند. با توجه به دمای بسیار پایین آب، احتمال سالم ماندن این بقایا بالاست. این پروژه همچنین به مطالعه فعالیت‌های آتشفشانی و لرزه‌ای در جزایر شتلند جنوبی خواهد پرداخت.",
-        "link": "https://www.bta.bg/en/news/1226848-35th-bulgarian-antarctic-expedition-to-expand-scientific-work-at-base-and-aboard"
-    }
-]
-
-# ✅ اخبار حیات وحش (پنگوئن‌ها، بی‌مهرگان، کریل)
-PENGUIN_NEWS = [
-    "🐧 **هشدار جدی (اکتبر ۲۰۲۶):** بزرگ‌ترین کلنی پنگوئن‌های چین‌استرپ در جزیره زاوودوفسکی از سال ۲۰۱۱ تاکنون **۶۳ درصد** کاهش یافته است. علت: کاهش کریل به دلیل گرمایش اقیانوس‌ها.",
-    "🦠 **حیات بی‌مهرگان جنوبگان:** گونه‌هایی از هیره‌های میکروسکوپی مانند *Alaskozetes antarcticus* (بندپای خشکی‌زی) تا عرض ۷۱ درجه جنوبی یافت می‌شوند [citation:19]. مگس‌ریزه بدون پرواز *Belgica antarctica* (۶ میلی‌متر) بزرگ‌ترین جانور کاملاً زمینی جنوبگان است و در شبه‌جزیره جنوبی زندگی می‌کند [citation:27].",
-    "🦐 **کریل جنوبگان (*Euphausia superba*):** این گونه کلیدی که غذای اصلی نهنگ‌ها، فک‌ها و پنگوئن‌هاست، در اقیانوس جنوبی زندگی می‌کند و توانایی شگفت‌انگیزی در کاهش اندازه بدن برای زنده ماندن در زمستان دارد [citation:7]."
-]
-
-def get_gist_users(filename):
-    url = "https://api.github.com/gists/" + str(GIST_ID)
-    headers = {"Authorization": "token " + str(GH_PAT)}
-    try:
-        r = requests.get(url, headers=headers, timeout=30)
-        r.raise_for_status()
-        content = r.json()["files"].get(filename, {}).get("content", "")
-        return json.loads(content) if content else {}
-    except Exception as e:
-        print("Gist error:", e)
-        return {}
 
 def weather_code_to_text(code):
     if code == 0: return "☀️ آفتابی"
@@ -133,62 +85,14 @@ def build_message():
         status = "پاک ✅" if now_dust < 20 else "متوسط 🟡" if now_dust < 50 else "ناسالم 🟠" if now_dust < 100 else "خطرناک 🔴"
         msg += f"🔹 **{city['name']}**: {status} ({round(now_dust, 1)} μg/m³)\n"
 
-    # --- بخش قطب جنوب ---
-    msg += "\n━━━━━━━━━━━━━━━\n\n"
-    msg += "🧊 **گزارش قطب جنوب**\n\n"
-    
-    msg += f"📹 **{ANTARCTICA_WEBCAM['name']}:**\n   🔗 {ANTARCTICA_WEBCAM['link']}\n\n"
-    
-    msg += "🌡️ **دمای ایستگاه‌های تحقیقاتی (امروز):**\n"
-    for st in ANTARCTICA_STATIONS:
-        msg += f"   • **{st['name']}**\n     دما: {st['temp']}\n     مختصات: {st['coord']}\n     منبع: {st['source']}\n"
-    msg += "\n"
-
-    if PENGUIN_NEWS:
-        msg += "🐾 **اخبار حیات وحش:**\n"
-        for news in PENGUIN_NEWS:
-            msg += f"   {news}\n\n"
-
-    msg += "📰 **اخبار پژوهشی جدید:**\n\n"
-    for item in ANTARCTICA_NEWS:
-        msg += f"**{item['title']}**\n"
-        msg += f"{item['paragraph']}\n"
-        msg += f"🔗 {item['link']}\n\n"
-        
-    msg += "━━━━━━━━━━━━━━━\n"
+    msg += "\n━━━━━━━━━━━━━━━\n"
     return msg
-
-async def send_telegram(msg):
-    users = get_gist_users("telegram_users.json")
-    if not users: return
-    bot = TelegramBot(token=TELEGRAM_TOKEN)
-    print("Telegram recipients:", len(users))
-    for cid in users.keys():
-        try:
-            await bot.send_message(chat_id=cid, text=msg)
-            print("  TG Sent:", cid)
-        except Exception as e:
-            print("  TG Failed:", cid, e)
-
-def send_bale(msg):
-    users = get_gist_users("bale_users.json")
-    if not users: return
-    print("Bale recipients:", len(users))
-    if not BALE_TOKEN: return
-    for cid in users.keys():
-        url = f"https://tapi.bale.ai/bot{BALE_TOKEN}/sendMessage"
-        try:
-            r = requests.post(url, json={"chat_id": cid, "text": msg, "parse_mode": "Markdown"}, timeout=30)
-            r.raise_for_status()
-            print("  Bale Sent:", cid)
-        except Exception as e:
-            print("  Bale Failed:", cid, e)
 
 async def main():
     print("=" * 60 + "\nگزارش آب‌وهوا - " + now_jalali() + "\n" + "=" * 60)
     msg = build_message()
-    await send_telegram(msg)
-    send_bale(msg)
+    # استفاده از سیستم ارسال همزمان (بله و تلگرام)
+    await notifier._send_to_all_async(msg)
     print("Done.")
 
 if __name__ == "__main__":
