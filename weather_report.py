@@ -89,9 +89,19 @@ def build_message():
     return msg
 
 async def main():
-    print("=" * 60 + "\nگزارش آب‌وهوا - " + now_jalali() + "\n" + "=" * 60)
+    print("=" * 60)
+    print("گزارش آب‌وهوا - " + now_jalali())
+    print("=" * 60)
+    
+    # چک کردن توکن‌ها
+    print("DEBUG: TELEGRAM_TOKEN:", "SET" if os.getenv("TELEGRAM_TOKEN") else "MISSING")
+    print("DEBUG: BALE_TOKEN:", "SET" if os.getenv("BALE_TOKEN") else "MISSING")
+    
     msg = build_message()
-    # استفاده از سیستم ارسال همزمان (بله و تلگرام)
+    print("DEBUG: Message built. Length:", len(msg))
+    
+    # فراخوانی تابع ارسال
+    import notifier
     await notifier._send_to_all_async(msg)
     print("Done.")
 
