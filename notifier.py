@@ -4,7 +4,7 @@ import asyncio
 import requests
 from config import BALE_TOKEN, TELEGRAM_TOKEN, GIST_ID, GH_PAT
 
-def get_all_chat_ids():
+def get_users_from_gist(filename):
     chat_ids = []
     try:
         if GIST_ID and GH_PAT:
@@ -12,7 +12,7 @@ def get_all_chat_ids():
             headers = {"Authorization": "token " + GH_PAT}
             r = requests.get(url, headers=headers, timeout=30)
             r.raise_for_status()
-            content = r.json()["files"].get("users.json", {}).get("content", "")
+            content = r.json()["files"].get(filename, {}).get("content", "")
             if content:
                 users = json.loads(content)
                 for cid in users.keys():
@@ -20,26 +20,26 @@ def get_all_chat_ids():
                     if cid and cid not in chat_ids:
                         chat_ids.append(cid)
     except Exception as e:
-        print("Gist read error in notifier:", e)
+        print(f"Gist read error ({filename}):", e)
     return chat_ids
 
 async def _send_to_all_async(msg):
     print("--- STARTING SEND PROCESS ---")
-    chat_ids = get_all_chat_ids()
-    print("Users found:", len(chat_ids), chat_ids)
     
-    if not chat_ids:
-        print("No chat IDs found. Exiting.")
-        return
+    # خواندن لیست‌های جداگانه
+    tg_chat_ids = get_users_from_gist("telegram_users.json")
+    bale_chat_ids = get_users_from_gist("bale_users.json")
+    
+    print(f"Telegram users: {len(tg_chat_ids)} | Bale users: {len(bale_chat_ids)}")
 
-    if TELEGRAM_TOKEN:
+    # 1. ارسال به تلگرام
+    if TELEGRAM_TOKEN and tg_chat_ids:
         print("Attempting Telegram send...")
         try:
             from telegram import Bot
             bot = Bot(token=TELEGRAM_TOKEN)
-            for cid in chat_ids:
+            for cid in tg_chat_ids:
                 try:
-                    # استفاده از ParseMode بدون مارک‌داون برای جلوگیری از خطا
                     await bot.send_message(chat_id=cid, text=msg)
                     print(f"TG Sent successfully to: {cid}")
                 except Exception as e:
@@ -47,23 +47,24 @@ async def _send_to_all_async(msg):
         except ImportError as e:
             print("Telegram module not installed:", e)
     else:
-        print("TELEGRAM_TOKEN is missing!")
+        print("Telegram skipped (No token or no users).")
 
-    if BALE_TOKEN:
+    # 2. ارسال به بله
+    if BALE_TOKEN and bale_chat_ids:
         print("Attempting Bale send...")
         url = f"https://tapi.bale.ai/bot{BALE_TOKEN}/sendMessage"
-        for cid in chat_ids:
+        for cid in bale_chat_ids:
             try:
-                # بدون ParseMode برای جلوگیری از خطا
                 r = requests.post(url, json={"chat_id": cid, "text": msg}, timeout=30)
                 if r.status_code == 200:
                     print(f"Bale Sent successfully to: {cid}")
                 else:
-                    print(f"Bale Failed for {cid} - Status: {r.status_code} - Response: {r.text}")
+                    print(f"Bale Failed for {cid} - Response: {r.text}")
             except Exception as e:
                 print(f"Bale Failed for {cid}: {e}")
     else:
-        print("BALE_TOKEN is missing!")
+        print("Bale skipped (No token or no users).")
+        
     print("--- SEND PROCESS FINISHED ---")
 
 def _send_to_all(msg):
