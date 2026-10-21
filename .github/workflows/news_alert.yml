@@ -1,0 +1,22 @@
+name: Climate News Alert
+on:
+  schedule:
+    - cron: '15 1,13 * * *' # هر 12 ساعت (15 دقیقه بعد از گزارش آب‌وهوا)
+  workflow_dispatch:
+
+jobs:
+  run-news:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - run: pip install -r requirements.txt
+      - name: Run News Alert
+        env:
+          BALE_TOKEN: ${{ secrets.BALE_TOKEN }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          GIST_ID: ${{ secrets.GIST_ID }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: python news_alert.py
