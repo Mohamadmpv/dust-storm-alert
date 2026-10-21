@@ -1,3 +1,4 @@
+from news_data import RESEARCH_NEWS
 import asyncio
 import os
 import json
@@ -86,6 +87,44 @@ def build_message():
         msg += f"🔹 **{city['name']}**: {status} ({round(now_dust, 1)} μg/m³)\n"
 
     msg += "\n━━━━━━━━━━━━━━━\n"
+    # --- بخش اخبار پژوهشی جدید ---
+    msg += "\n━━━━━━━━━━━━━━━\n\n"
+    msg += "📚 **اخبار و مقالات پژوهشی جدید (ال نینو و اقلیم):**\n\n"
+
+    sent_news_ids = []
+    try:
+        # خواندن لیست خبرهای ارسال شده از Gist
+        gist_url = "https://api.github.com/gists/" + str(GIST_ID)
+        headers = {"Authorization": "token " + str(GH_PAT)}
+        r_gist = requests.get(gist_url, headers=headers, timeout=30)
+        content = r_gist.json()["files"].get("sent_news.json", {}).get("content", "")
+        if content:
+            sent_news_ids = json.loads(content)
+    except Exception as e:
+        print("Error reading sent_news:", e)
+
+    new_sent_ids = []
+    for news in RESEARCH_NEWS:
+        if news["id"] not in sent_news_ids:
+            msg += f"🔹 **{news['title']}**\n"
+            msg += f"   {news['text']}\n"
+            msg += f"   🔗 {news['link']}\n"
+            msg += f"   📌 منبع: {news['source']}\n\n"
+            new_sent_ids.append(news["id"])
+
+    if not new_sent_ids:
+        msg += "   (خبر جدیدی برای ارسال وجود ندارد. آخرین اخبار قبلاً ارسال شده‌اند.)\n"
+
+    # ذخیره خبرهای جدید در لیست ارسال شده‌ها (در Gist)
+    if new_sent_ids:
+        updated_ids = sent_news_ids + new_sent_ids
+        try:
+            patch_url = "https://api.github.com/gists/" + str(GIST_ID)
+            patch_data = {"files": {"sent_news.json": {"content": json.dumps(updated_ids)}}}
+            requests.patch(patch_url, headers=headers, json=patch_data, timeout=30)
+            print(f"Sent {len(new_sent_ids)} new news items and updated Gist.")
+        except Exception as e:
+            print("Error updating sent_news:", e)
     return msg
 
 async def main():
