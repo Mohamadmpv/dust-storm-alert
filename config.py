@@ -25,3 +25,7 @@ WEATHER_CITIES = [
     {"name": "چابهار",    "lat": 25.2900, "lon": 60.6430},
     {"name": "بندر انزلی", "lat": 37.4720, "lon": 49.4630},
 ]
+# --- تنظیمات API ---
+API_URL = "https://api.open-meteo.com/v1/forecast"
+AIR_QUALITY_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
+FORECAST_DAYS = 2
