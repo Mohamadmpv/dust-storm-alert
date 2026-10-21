@@ -1,23 +1,22 @@
 name: Storm Alert
-
 on:
   schedule:
-    - cron: '0 * * * *'
+    - cron: '0,30 * * * *'
   workflow_dispatch:
 
 jobs:
-  alert:
+  run-alert:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: '3.10'
       - run: pip install -r requirements.txt
-      - name: Run storm alert
+      - name: Run Alert
         env:
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           BALE_TOKEN: ${{ secrets.BALE_TOKEN }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           GIST_ID: ${{ secrets.GIST_ID }}
           GH_PAT: ${{ secrets.GH_PAT }}
-        run: python storm_alert.py
+        run: python urgent_check.py   # <--- این خط اصلاح شد
