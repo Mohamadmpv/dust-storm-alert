@@ -1,4 +1,3 @@
-from news_data import RESEARCH_NEWS
 import asyncio
 import os
 import json
@@ -15,7 +14,6 @@ BALE_TOKEN = os.getenv("BALE_TOKEN")
 GIST_ID = os.getenv("GIST_ID")
 GH_PAT = os.getenv("GH_PAT")
 
-# --- شهرهای ایران ---
 WEATHER_CITIES = [
     {"name": "تهران",     "lat": 35.6892, "lon": 51.3890},
     {"name": "تبریز",     "lat": 38.0800, "lon": 46.2919},
@@ -25,6 +23,8 @@ WEATHER_CITIES = [
     {"name": "بوشهر",     "lat": 28.9234, "lon": 50.8200},
     {"name": "چابهار",    "lat": 25.2900, "lon": 60.6430},
     {"name": "بندر انزلی", "lat": 37.4720, "lon": 49.4630},
+    {"name": "زابل (سیستان)", "lat": 31.028, "lon": 61.497},
+    {"name": "زاهدان", "lat": 29.496, "lon": 60.862}
 ]
 
 def weather_code_to_text(code):
@@ -60,7 +60,7 @@ def get_dust(lat, lon):
         return None
 
 def build_message():
-    msg = "🌤️ **گزارش روزانه** 🌤️\n\n📅 " + now_jalali() + "\n"
+    msg = "🌤️ **گزارش روزانه آب‌وهوا** 🌤️\n\n📅 " + now_jalali() + "\n"
     msg += "━━━━━━━━━━━━━━━\n\n"
     
     msg += "🌡️ **آب‌وهوای فردا (ایران):**\n\n"
@@ -90,19 +90,15 @@ def build_message():
     return msg
 
 async def main():
-    print("=" * 60)
-    print("گزارش آب‌وهوا - " + now_jalali())
-    print("=" * 60)
+    print("=" * 60 + "\nگزارش آب‌وهوا - " + now_jalali() + "\n" + "=" * 60)
     
-    # چک کردن توکن‌ها
     print("DEBUG: TELEGRAM_TOKEN:", "SET" if os.getenv("TELEGRAM_TOKEN") else "MISSING")
     print("DEBUG: BALE_TOKEN:", "SET" if os.getenv("BALE_TOKEN") else "MISSING")
     
     msg = build_message()
     print("DEBUG: Message built. Length:", len(msg))
     
-    # فراخوانی تابع ارسال
-    import notifier
+    # استفاده از سیستم ارسال همزمان (بله و تلگرام)
     await notifier._send_to_all_async(msg)
     print("Done.")
 

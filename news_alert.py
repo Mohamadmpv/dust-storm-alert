@@ -6,7 +6,6 @@ from jalali import now_jalali
 from notifier import _send_to_all_async
 from config import GIST_ID, GH_PAT
 
-# --- لیست اخبار پژوهشی و اقلیمی ---
 CLIMATE_NEWS = [
     {
         "id": 1,
@@ -57,7 +56,6 @@ def save_sent_news_ids(new_ids):
         data = {"files": {"sent_climate_news.json": {"content": json.dumps(new_ids)}}}
         r = requests.patch(url, headers=headers, json=data, timeout=30)
         r.raise_for_status()
-        print("Gist updated with new sent news IDs.")
     except Exception as e:
         print("Gist write error:", e)
 
