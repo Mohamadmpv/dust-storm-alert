@@ -1,7 +1,7 @@
 from api_client import get_wind_data
 from config import WIND_SPEED_THRESHOLD
 from notifier import _send_to_all
-from jalali import now_jalali
+from jalali import now_jalali, to_jalali
 from wind_analysis import analyze_wind_source
 from datetime import datetime, timezone, timedelta
 import asyncio
@@ -25,9 +25,13 @@ def check_urgent():
     now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
     now_tehran = now_utc + timedelta(hours=3, minutes=30)
 
+    print(f"Checking urgent points... (Current Tehran Time: {now_tehran})")
+
     for point in URGENT_POINTS:
+        print(f"Checking: {point['name']}")
         wind = get_wind_data(point["lat"], point["lon"])
         if not wind or "hourly" not in wind:
+            print(f"  No data for {point['name']}")
             continue
 
         hourly = wind["hourly"]
@@ -49,6 +53,7 @@ def check_urgent():
             if speed is None or speed <= WIND_SPEED_THRESHOLD:
                 continue
 
+            print(f"  ALERT FOUND: {point['name']} - Speed: {speed} km/h")
             alerts.append({
                 "point": point["name"],
                 "speed": round(speed, 1),
@@ -68,7 +73,7 @@ def run_urgent():
     alerts = check_urgent()
 
     if alerts:
-        print("هشدار فوری یافت شد:", len(alerts))
+        print(f"Total urgent alerts found: {len(alerts)}")
         msg = "🚨 **هشدار فوری طوفان** 🚨\n\n"
         msg += "📅 " + now_jalali() + "\n"
         msg += "━━━━━━━━━━━━━━━\n\n"
@@ -78,14 +83,23 @@ def run_urgent():
             msg += f"   💨 سرعت باد: {a['speed']} km/h\n"
             msg += f"   🧭 جهت باد: {a['direction']} درجه\n"
             msg += f"   📍 تحلیل: {a['analysis']}\n"
-            msg += f"   🕐 زمان: {a['time']}\n"
+            
+            jalali_time = to_jalali(a["time"])
+            if " - " in jalali_time:
+                date_part, time_part = jalali_time.split(" - ")
+                msg += f"   🗓️ تاریخ: {date_part}\n"
+                msg += f"   🕐 ساعت: {time_part}\n"
+            else:
+                msg += f"   🕐 زمان: {jalali_time}\n"
+                
             msg += "   📌 باد در ۲ ساعت آینده می‌رسد!\n\n"
 
         msg += "━━━━━━━━━━━━━━━\n"
+        print("Sending urgent alert...")
         asyncio.run(_send_to_all(msg))
-        print("هشدار فوری ارسال شد.")
+        print("Urgent alert sent successfully.")
     else:
-        print("وضعیت عادی است.")
+        print("No urgent alerts found. Weather is normal.")
 
 if __name__ == "__main__":
     run_urgent()
