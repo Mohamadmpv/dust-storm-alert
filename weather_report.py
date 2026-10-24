@@ -49,9 +49,15 @@ def get_weather(lat, lon):
     except Exception:
         return None
 
-def get_dust(lat, lon):
+def get_air_quality(lat, lon):
+    """دریافت داده‌های کیفیت هوا (PM2.5, PM10, NO2) از Open-Meteo"""
     url = "https://air-quality-api.open-meteo.com/v1/air-quality"
-    params = {"latitude": lat, "longitude": lon, "hourly": "pm10,dust", "forecast_days": 2, "timezone": "Asia/Tehran"}
+    params = {
+        "latitude": lat, "longitude": lon,
+        "hourly": "pm2_5,pm10,nitrogen_dioxide",
+        "forecast_days": 1,
+        "timezone": "Asia/Tehran"
+    }
     try:
         r = requests.get(url, params=params, timeout=60)
         r.raise_for_status()
@@ -59,10 +65,38 @@ def get_dust(lat, lon):
     except Exception:
         return None
 
+def get_inversion_status(weather_data, air_data):
+    """
+    تشخیص احتمال وارونگی دما:
+    اگر دما در ارتفاع بالاتر بیشتر از سطح زمین باشد (یا اختلاف دمای شبانه‌روزی کم و باد کم باشد)
+    این یک تخمین ساده است بر اساس داده‌های موجود.
+    """
+    if not weather_data or not air_data:
+        return "نامشخص"
+    
+    try:
+        # بررسی اختلاف دمای شبانه‌روزی (اگر اختلاف کم باشد، احتمال وارونگی بیشتر است)
+        daily = weather_data.get("daily", {})
+        if "temperature_2m_max" in daily and "temperature_2m_min" in daily:
+            tmax = daily["temperature_2m_max"][0]
+            tmin = daily["temperature_2m_min"][0]
+            if tmax is not None and tmin is not None:
+                diff = tmax - tmin
+                if diff < 8:
+                    return "🔴 احتمال بالای وارونگی دما (اختلاف دمای شبانه‌روزی کم)"
+                elif diff < 12:
+                    return "🟡 احتمال متوسط وارونگی دما"
+                else:
+                    return "🟢 احتمال کم وارونگی دما"
+    except Exception:
+        pass
+    return "نامشخص"
+
 def build_message():
-    msg = "🌤️ **گزارش روزانه آب‌وهوا** 🌤️\n\n📅 " + now_jalali() + "\n"
+    msg = "🌤️ **گزارش روزانه آب‌وهوا و آلودگی هوا** 🌤️\n\n📅 " + now_jalali() + "\n"
     msg += "━━━━━━━━━━━━━━━\n\n"
     
+    # بخش آب‌وهوا
     msg += "🌡️ **آب‌وهوای فردا (ایران):**\n\n"
     for city in WEATHER_CITIES:
         data = get_weather(city["lat"], city["lon"])
@@ -75,30 +109,60 @@ def build_message():
         if rain and rain > 0: msg += f"   🌧️ بارش: {round(rain, 1)} mm\n"
         msg += "\n"
 
-    msg += "━━━━━━━━━━━━━━━\n\n🌫️ **وضعیت گرد و خاک:**\n\n"
-    for city in WEATHER_CITIES:
-        dust = get_dust(city["lat"], city["lon"])
-        if not dust or "hourly" not in dust: continue
-        h = dust["hourly"]
-        if "dust" not in h or len(h["dust"]) < 1: continue
-        now_dust = h["dust"][0]
-        if now_dust is None: continue
-        status = "پاک ✅" if now_dust < 20 else "متوسط 🟡" if now_dust < 50 else "ناسالم 🟠" if now_dust < 100 else "خطرناک 🔴"
-        msg += f"🔹 **{city['name']}**: {status} ({round(now_dust, 1)} μg/m³)\n"
+    # بخش آلودگی هوا (تمرکز روی تهران)
+    msg += "━━━━━━━━━━━━━━━\n\n"
+    msg += "🏭 **وضعیت آلودگی هوا (تهران):**\n\n"
+    
+    tehran_air = get_air_quality(35.6892, 51.3890)
+    tehran_weather = get_weather(35.6892, 51.3890)
+    
+    if tehran_air and "hourly" in tehran_air:
+        h = tehran_air["hourly"]
+        now_idx = 0  # اولین ساعت (فعلی)
+        
+        pm25 = h.get("pm2_5", [None])[now_idx]
+        pm10 = h.get("pm10", [None])[now_idx]
+        no2 = h.get("nitrogen_dioxide", [None])[now_idx]
+        
+        # تعیین وضعیت PM2.5
+        if pm25 is not None:
+            if pm25 < 12:
+                pm25_status = "پاک ✅"
+            elif pm25 < 35.5:
+                pm25_status = "قابل قبول 🟡"
+            elif pm25 < 55.5:
+                pm25_status = "ناسالم برای گروه‌های حساس 🟠"
+            elif pm25 < 150.5:
+                pm25_status = "ناسالم 🔴"
+            else:
+                pm25_status = "بسیار ناسالم ⛔"
+            msg += f"   🔹 **PM2.5 (ذرات ریز):** {round(pm25, 1)} μg/m³ ({pm25_status})\n"
+        
+        if pm10 is not None:
+            msg += f"   🔹 **PM10 (ذرات معلق):** {round(pm10, 1)} μg/m³\n"
+        
+        if no2 is not None:
+            msg += f"   🔹 **NO₂ (دی‌اکسید نیتروژن):** {round(no2, 1)} μg/m³\n"
+        
+        # وضعیت وارونگی دما
+        inversion = get_inversion_status(tehran_weather, tehran_air)
+        msg += f"   🔄 **وضعیت وارونگی دما:** {inversion}\n"
+        
+        # هشدار مرزی
+        if pm25 is not None and pm25 >= 35.5:
+            msg += "\n   ⚠️ **هشدار:** کیفیت هوا برای گروه‌های حساس نامناسب است. توصیه می‌شود کودکان، سالمندان و بیماران قلبی-ریوی از تردد غیرضروری پرهیز کنند.\n"
+    else:
+        msg += "   (داده‌های کیفیت هوا در دسترس نیست)\n"
 
     msg += "\n━━━━━━━━━━━━━━━\n"
     return msg
 
 async def main():
-    print("=" * 60 + "\nگزارش آب‌وهوا - " + now_jalali() + "\n" + "=" * 60)
-    
-    print("DEBUG: TELEGRAM_TOKEN:", "SET" if os.getenv("TELEGRAM_TOKEN") else "MISSING")
-    print("DEBUG: BALE_TOKEN:", "SET" if os.getenv("BALE_TOKEN") else "MISSING")
+    print("=" * 60 + "\nگزارش آب‌وهوا و آلودگی - " + now_jalali() + "\n" + "=" * 60)
     
     msg = build_message()
     print("DEBUG: Message built. Length:", len(msg))
     
-    # استفاده از سیستم ارسال همزمان (بله و تلگرام)
     await notifier._send_to_all_async(msg)
     print("Done.")
 
