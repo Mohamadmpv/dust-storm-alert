@@ -22,16 +22,17 @@ URGENT_POINTS = [
 
 def check_urgent():
     alerts = []
+    
+    # 1. زمان فعلی به وقت گرینویچ (UTC) را می‌گیریم
     now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+    
+    # 2. زمان فعلی به وقت تهران را برای چاپ در لاگ حساب می‌کنیم (فقط برای اینکه ببینید سیستم الان چه ساعتی است)
     now_tehran = now_utc + timedelta(hours=3, minutes=30)
-
-    print(f"Checking urgent points... (Current Tehran Time: {now_tehran})")
+    print(f"Current UTC: {now_utc} | Current Tehran: {now_tehran}")
 
     for point in URGENT_POINTS:
-        print(f"Checking: {point['name']}")
         wind = get_wind_data(point["lat"], point["lon"])
         if not wind or "hourly" not in wind:
-            print(f"  No data for {point['name']}")
             continue
 
         hourly = wind["hourly"]
@@ -41,9 +42,13 @@ def check_urgent():
 
         for i, time_str in enumerate(times):
             try:
-                alert_time = datetime.fromisoformat(time_str)
-                alert_time_tehran = alert_time + timedelta(hours=3, minutes=30)
-                diff_minutes = (alert_time_tehran - now_tehran).total_seconds() / 60
+                # API همیشه زمان را به UTC می‌دهد
+                alert_time_utc = datetime.fromisoformat(time_str)
+                
+                # اختلاف زمانی: زمان هشدار (UTC) منهای زمان فعلی (UTC)
+                diff_minutes = (alert_time_utc - now_utc).total_seconds() / 60
+                
+                # اگر زمان هشدار بین 0 تا 120 دقیقه آینده نبود، برو بعدی
                 if diff_minutes < 0 or diff_minutes > 120:
                     continue
             except Exception:
@@ -53,13 +58,15 @@ def check_urgent():
             if speed is None or speed <= WIND_SPEED_THRESHOLD:
                 continue
 
-            print(f"  ALERT FOUND: {point['name']} - Speed: {speed} km/h")
+            # برای نمایش در پیام، زمان UTC را به وقت تهران تبدیل می‌کنیم
+            alert_time_tehran = alert_time_utc + timedelta(hours=3, minutes=30)
+            
             alerts.append({
                 "point": point["name"],
                 "speed": round(speed, 1),
                 "direction": directions[i],
                 "analysis": analyze_wind_source(point["name"], directions[i]),
-                "time": time_str
+                "time_tehran": alert_time_tehran.strftime("%Y-%m-%d %H:%M") # ساعت دقیق تهران
             })
             break
 
@@ -73,7 +80,6 @@ def run_urgent():
     alerts = check_urgent()
 
     if alerts:
-        print(f"Total urgent alerts found: {len(alerts)}")
         msg = "🚨 **هشدار فوری طوفان** 🚨\n\n"
         msg += "📅 " + now_jalali() + "\n"
         msg += "━━━━━━━━━━━━━━━\n\n"
@@ -83,21 +89,11 @@ def run_urgent():
             msg += f"   💨 سرعت باد: {a['speed']} km/h\n"
             msg += f"   🧭 جهت باد: {a['direction']} درجه\n"
             msg += f"   📍 تحلیل: {a['analysis']}\n"
-            
-            jalali_time = to_jalali(a["time"])
-            if " - " in jalali_time:
-                date_part, time_part = jalali_time.split(" - ")
-                msg += f"   🗓️ تاریخ: {date_part}\n"
-                msg += f"   🕐 ساعت: {time_part}\n"
-            else:
-                msg += f"   🕐 زمان: {jalali_time}\n"
-                
+            msg += f"   🗓️ زمان دقیق: {a['time_tehran']} (به وقت تهران)\n"
             msg += "   📌 باد در ۲ ساعت آینده می‌رسد!\n\n"
 
         msg += "━━━━━━━━━━━━━━━\n"
-        print("Sending urgent alert...")
         asyncio.run(_send_to_all(msg))
-        print("Urgent alert sent successfully.")
     else:
         print("No urgent alerts found. Weather is normal.")
 
