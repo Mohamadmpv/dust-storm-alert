@@ -1,10 +1,15 @@
 import os
+import sys
 import json
 import requests
 import asyncio
 from jalali import now_jalali
 from notifier import _send_to_all_async
 from config import GIST_ID, GH_PAT
+
+# تنظیم انکودینگ برای نمایش صحیح فارسی در ویندوز
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding='utf-8')
 
 # لیست اخبار علمی
 CLIMATE_NEWS = [
@@ -35,11 +40,18 @@ CLIMATE_NEWS = [
         "text": "مطالعه‌ای در مجله Nature Climate Change نشان می‌دهد که سرعت ذوب یخ‌های قطب جنوب در سال ۲۰۲۶ رکورد زده است. این موضوع می‌تواند سطح آب دریاها را به طور قابل توجهی افزایش دهد و الگوهای آب‌وهوایی جهانی را دگرگون کند.",
         "link": "https://www.nature.com/nclimate/",
         "source": "Nature Climate Change"
+    },
+    {
+        "id": 5,
+        "title": "تست نهایی: ارسال خبر جدید پس از همگام‌سازی",
+        "text": "این یک خبر آزمایشی است تا مطمئن شویم سیستم خبرهای جدید را به درستی ارسال می‌کند.",
+        "link": "https://www.google.com",
+        "source": "تست سیستم"
     }
 ]
 
 def get_sent_news_ids():
-    """خواندن لیست خبرهای ارسال شده از Gist (مشترک بین کامپیوتر و گیت‌هاب)"""
+    """خواندن لیست خبرهای ارسال شده از Gist"""
     try:
         url = "https://api.github.com/gists/" + str(GIST_ID)
         headers = {"Authorization": "token " + str(GH_PAT)}
@@ -48,7 +60,7 @@ def get_sent_news_ids():
         content = r.json()["files"].get("sent_climate_news.json", {}).get("content", "")
         return json.loads(content) if content else []
     except Exception as e:
-        print("Gist read error:", e)
+        print(f"Gist read error: {e}")
         return []
 
 def save_sent_news_ids(new_ids):
@@ -61,7 +73,7 @@ def save_sent_news_ids(new_ids):
         r.raise_for_status()
         print("Gist memory updated.")
     except Exception as e:
-        print("Gist write error:", e)
+        print(f"Gist write error: {e}")
 
 def build_news_message():
     sent_ids = get_sent_news_ids()
@@ -88,7 +100,10 @@ def build_news_message():
     return msg, new_ids_to_send
 
 async def main():
-    print("=" * 60 + "\nگزارش اخبار اقلیم - " + now_jalali() + "\n" + "=" * 60)
+    print("=" * 60)
+    print("گزارش اخبار اقلیم - " + now_jalali())
+    print("=" * 60)
+    
     msg, new_ids = build_news_message()
     
     if new_ids:
