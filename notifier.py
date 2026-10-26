@@ -40,21 +40,13 @@ async def _send_to_all_async(msg):
             bot = Bot(token=TELEGRAM_TOKEN)
             for cid in tg_chat_ids:
                 try:
-                    # تلاش اول با مارک‌داون
-                    await bot.send_message(chat_id=cid, text=msg, parse_mode="Markdown")
+                    # ارسال بدون هیچ فرمت‌دهی (ParseMode)
+                    await bot.send_message(chat_id=cid, text=msg)
                     print(f"TG Sent successfully to: {cid}")
                 except Exception as e:
-                    print(f"TG Markdown failed for {cid}: {e}")
-                    try:
-                        # اگر مارک‌داون خطا داد، بدون فرمت بفرست
-                        await bot.send_message(chat_id=cid, text=msg)
-                        print(f"TG Sent (no format) successfully to: {cid}")
-                    except Exception as e2:
-                        print(f"TG Failed completely for {cid}: {e2}")
+                    print(f"TG Failed for {cid}: {e}")
         except ImportError as e:
             print("Telegram module not installed:", e)
-    else:
-        print("Telegram skipped (No token or no users).")
 
     # 2. ارسال به بله
     if BALE_TOKEN and bale_chat_ids:
