@@ -6,6 +6,7 @@ from jalali import now_jalali
 from notifier import _send_to_all_async
 from config import GIST_ID, GH_PAT
 
+# لیست اخبار علمی
 CLIMATE_NEWS = [
     {
         "id": 1,
@@ -34,11 +35,11 @@ CLIMATE_NEWS = [
         "text": "مطالعه‌ای در مجله Nature Climate Change نشان می‌دهد که سرعت ذوب یخ‌های قطب جنوب در سال ۲۰۲۶ رکورد زده است. این موضوع می‌تواند سطح آب دریاها را به طور قابل توجهی افزایش دهد و الگوهای آب‌وهوایی جهانی را دگرگون کند.",
         "link": "https://www.nature.com/nclimate/",
         "source": "Nature Climate Change"
-    }    
-
+    }
 ]
 
 def get_sent_news_ids():
+    """خواندن لیست خبرهای ارسال شده از Gist (مشترک بین کامپیوتر و گیت‌هاب)"""
     try:
         url = "https://api.github.com/gists/" + str(GIST_ID)
         headers = {"Authorization": "token " + str(GH_PAT)}
@@ -51,12 +52,14 @@ def get_sent_news_ids():
         return []
 
 def save_sent_news_ids(new_ids):
+    """ذخیره لیست خبرهای ارسال شده در Gist"""
     try:
         url = "https://api.github.com/gists/" + str(GIST_ID)
         headers = {"Authorization": "token " + str(GH_PAT)}
         data = {"files": {"sent_climate_news.json": {"content": json.dumps(new_ids)}}}
         r = requests.patch(url, headers=headers, json=data, timeout=30)
         r.raise_for_status()
+        print("Gist memory updated.")
     except Exception as e:
         print("Gist write error:", e)
 
@@ -91,6 +94,7 @@ async def main():
     if new_ids:
         print(f"Sending {len(new_ids)} new news items.")
         await _send_to_all_async(msg)
+        # ذخیره در Gist
         save_sent_news_ids(get_sent_news_ids() + new_ids)
     else:
         print("No new news to send. Skipping to avoid spam.")
