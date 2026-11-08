@@ -4,84 +4,107 @@ import asyncio
 import requests
 from config import BALE_TOKEN, TELEGRAM_TOKEN, GIST_ID, GH_PAT
 
-def get_users_from_gist(filename):
-    chat_ids = []
+def get_gist_data(filename):
     try:
-        if GIST_ID and GH_PAT:
-            url = "https://api.github.com/gists/" + GIST_ID
-            headers = {"Authorization": "token " + GH_PAT}
-            r = requests.get(url, headers=headers, timeout=30)
-            r.raise_for_status()
-            content = r.json()["files"].get(filename, {}).get("content", "")
-            if content:
-                users = json.loads(content)
-                for cid in users.keys():
-                    cid = str(cid).strip()
-                    if cid and cid not in chat_ids:
-                        chat_ids.append(cid)
+        url = "https://api.github.com/gists/" + str(GIST_ID)
+        headers = {"Authorization": "token " + str(GH_PAT)}
+        r = requests.get(url, headers=headers, timeout=30)
+        r.raise_for_status()
+        content = r.json()["files"].get(filename, {}).get("content", "")
+        return json.loads(content) if content else {}
     except Exception as e:
-        print(f"Gist read error ({filename}):", e)
-    return chat_ids
+        print(f"Gist read error ({filename}): {e}")
+        return {}
 
-async def _send_to_all_async(msg):
-    print("--- STARTING SEND PROCESS ---")
+def save_gist_data(filename, data):
+    try:
+        url = "https://api.github.com/gists/" + str(GIST_ID)
+        headers = {"Authorization": "token " + str(GH_PAT)}
+        gist_data = {"files": {filename: {"content": json.dumps(data)}}}
+        r = requests.patch(url, headers=headers, json=gist_data, timeout=30)
+        r.raise_for_status()
+        print(f"Gist updated ({filename}).")
+    except Exception as e:
+        print(f"Gist write error ({filename}): {e}")
+
+async def _send_to_all_async(msg, message_id=None):
+    send_status = get_gist_data("send_status.json")
     
-    # خواندن لیست‌های جداگانه
-    tg_chat_ids = get_users_from_gist("telegram_users.json")
-    bale_chat_ids = get_users_from_gist("bale_users.json")
+    if message_id is None:
+        await _send_to_bale(msg)
+        await _send_to_telegram(msg)
+        return
+
+    status = send_status.get(str(message_id), {"bale": False, "telegram": False})
     
-    print(f"Telegram users: {len(tg_chat_ids)} | Bale users: {len(bale_chat_ids)}")
+    # ارسال به بله
+    if BALE_TOKEN and not status["bale"]:
+        success = await _send_to_bale(msg)
+        if success:
+            status["bale"] = True
+            send_status[str(message_id)] = status
+            save_gist_data("send_status.json", send_status)
+            print(f"Bale status updated for {message_id}")
 
     # ارسال به تلگرام
-    if TELEGRAM_TOKEN and tg_chat_ids:
-        print("Attempting Telegram send...")
-        try:
-            from telegram import Bot
-            bot = Bot(token=TELEGRAM_TOKEN)
-            for cid in tg_chat_ids:
-                try:
-                    # ارسال بدون هیچ فرمت‌دهی (ParseMode)
-                    await bot.send_message(chat_id=cid, text=msg)
-                    print(f"TG Sent successfully to: {cid}")
-                except Exception as e:
-                    print(f"TG Failed for {cid}: {e}")
-        except ImportError as e:
-            print("Telegram module not installed:", e)
+    if TELEGRAM_TOKEN and not status["telegram"]:
+        success = await _send_to_telegram(msg)
+        if success:
+            status["telegram"] = True
+            send_status[str(message_id)] = status
+            save_gist_data("send_status.json", send_status)
+            print(f"Telegram status updated for {message_id}")
 
-    # 2. ارسال به بله
-    if BALE_TOKEN and bale_chat_ids:
-        print("Attempting Bale send...")
-        url = f"https://tapi.bale.ai/bot{BALE_TOKEN}/sendMessage"
-        for cid in bale_chat_ids:
+async def _send_to_bale(msg):
+    users = get_gist_data("bale_users.json")
+    if not users or not BALE_TOKEN:
+        return False
+    success = False
+    url = f"https://tapi.bale.ai/bot{BALE_TOKEN}/sendMessage"
+    for cid in users.keys():
+        try:
+            r = requests.post(url, json={"chat_id": cid, "text": msg}, timeout=30)
+            if r.status_code == 200:
+                print(f"Bale Sent: {cid}")
+                success = True
+            else:
+                print(f"Bale Failed {cid}: {r.text}")
+        except Exception as e:
+            print(f"Bale Failed {cid}: {e}")
+    return success
+
+async def _send_to_telegram(msg):
+    users = get_gist_data("telegram_users.json")
+    if not users or not TELEGRAM_TOKEN:
+        return False
+    success = False
+    try:
+        from telegram import Bot
+        bot = Bot(token=TELEGRAM_TOKEN)
+        for cid in users.keys():
             try:
-                r = requests.post(url, json={"chat_id": cid, "text": msg}, timeout=30)
-                if r.status_code == 200:
-                    print(f"Bale Sent successfully to: {cid}")
-                else:
-                    print(f"Bale Failed for {cid} - Response: {r.text}")
+                await bot.send_message(chat_id=cid, text=msg)
+                print(f"TG Sent: {cid}")
+                success = True
             except Exception as e:
-                print(f"Bale Failed for {cid}: {e}")
-    else:
-        print("Bale skipped (No token or no users).")
-        
-    print("--- SEND PROCESS FINISHED ---")
+                print(f"TG Failed {cid}: {e}")
+    except Exception as e:
+        print(f"TG Error: {e}")
+    return success
 
 def _send_to_all(msg):
     asyncio.run(_send_to_all_async(msg))
 
 def send_alert(alerts):
     if not alerts: return
-    msg = "🚨 هشدار طوفان 🚨\n\n"
+    msg = "🚨 **هشدار طوفان** 🚨\n\n"
     for a in alerts:
-        msg += f"⚠️ {a['point']}\n   💨 سرعت باد: {a['speed']} km/h\n   🕐 زمان: {a['time']}\n\n"
+        msg += f"⚠️ {a['point']}\n   💨 سرعت باد: {a['speed']} km/h\n   🕐 زمان: {a['time_tehran']}\n\n"
     _send_to_all(msg)
 
 def send_forecast_alert(forecasts):
     if not forecasts: return
-    msg = "⚠️ پیش‌بینی طوفان ⚠️\n\n"
+    msg = "⚠️ **پیش‌بینی طوفان** ⚠️\n\n"
     for f in forecasts:
         msg += f"📍 {f['point']}\n   💨 سرعت: {f['speed']} km/h\n\n"
     _send_to_all(msg)
-
-async def send_test_message():
-    await _send_to_all_async("🧪 پیام تست\n\nسیستم هشدار کار می‌کند. ✅")

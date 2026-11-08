@@ -12,32 +12,29 @@ from config import GIST_ID, GH_PAT
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding='utf-8')
 
-# --- منابع هشدار فوری (اولویت اول) ---
 URGENT_SOURCES = [
     {"name": "NOAA ENSO Advisory", "url": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/ensodisc.txt", "link": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/"},
     {"name": "WMO El Niño Update", "url": "https://wmo.int/", "link": "https://wmo.int/"},
 ]
 
-# --- منابع علمی معتبر (اولویت دوم) ---
 JOURNAL_SOURCES = [
     {"name": "JGR: Oceans", "url": "https://agupubs.onlinelibrary.wiley.com/feed/21699291/most-recent"},
     {"name": "Marine Pollution Bulletin", "url": "https://rss.sciencedirect.com/publication/science/0025326X"},
     {"name": "Ocean & Coastal Management", "url": "https://rss.sciencedirect.com/publication/science/09645691"},
 ]
 
-# --- لیست پشتیبان ---
 FALLBACK_NEWS = [
     {
         "id": "fb_elnino",
         "title": "🔴 هشدار فوری: ال نینو در حال تشدید است (NOAA - اکتبر ۲۰۲۶)",
-        "text": "مرکز پیش‌بینی اقلیم آمریکا (NOAA) اعلام کرد: ال نینو در حال تقویت است و احتمال یک رویداد «تاریخی» (قوی‌تر از تمام رکوردهای ۱۹۵۰) بین ۸۳ تا ۷۰ درصد است. سازمان هواشناسی ایران نیز هشدار داده که این پدیده بارش‌ها را سیل‌آسا و نقطه‌ای می‌کند.",
+        "text": "مرکز پیش‌بینی اقلیم آمریکا (NOAA) اعلام کرد: ال نینو در حال تقویت است و احتمال یک رویداد «تاریخی» (قوی‌تر از تمام رکوردهای ۱۹۵۰) بین ۸۳ تا ۷۰ درصد است.",
         "link": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/",
-        "source": "NOAA / سازمان هواشناسی"
+        "source": "NOAA"
     },
     {
         "id": "fb_coral",
         "title": "وضعیت مرجان‌های خلیج فارس",
-        "text": "رئیس مرکز اقیانوس‌شناسی خلیج فارس: دمای آب در تابستان به بیش از ۳۶ درجه می‌رسد و مرجان‌ها در آستانه تنش حرارتی شدید هستند. گرمایش اقیانوس‌ها زنجیره غذایی را تهدید می‌کند.",
+        "text": "رئیس مرکز اقیانوس‌شناسی خلیج فارس: دمای آب در تابستان به بیش از ۳۶ درجه می‌رسد و مرجان‌ها در آستانه تنش حرارتی شدید هستند.",
         "link": "https://7sobh.com/",
         "source": "هفت صبح"
     }
@@ -102,28 +99,25 @@ def fetch_rss_news(source_url, source_name):
 
 async def main():
     print("=" * 60)
-    print("گزارش مقالات علمی و هشدارهای اقلیمی - " + now_jalali())
+    print("گزارش اخبار اقلیم و دریا - " + now_jalali())
     print("=" * 60)
     
-    # ۱. جمع‌آوری هشدارهای فوری
     urgent_news = []
     for source in URGENT_SOURCES:
         print(f"Checking urgent source: {source['name']}...")
         urgent_news.extend(fetch_text_urgent(source["url"], source["name"]))
     
-    # ۲. جمع‌آوری مقالات علمی
     journal_news = []
     for source in JOURNAL_SOURCES:
         print(f"Fetching journal: {source['name']}...")
         journal_news.extend(fetch_rss_news(source["url"], source["name"]))
     
-    # ۳. اگر هیچ خبری آنلاین نبود، از لیست پشتیبان استفاده کن
     fallback_news = []
     if not urgent_news and not journal_news:
         print("No online news. Using fallback.")
         fallback_news = FALLBACK_NEWS
 
-    # ۴. ارسال پیام‌ها
+    # بخش الف: هشدارهای فوری
     if urgent_news:
         msg = "🔴 **هشدارهای فوری اقلیمی** 🔴\n\n"
         msg += "📅 " + now_jalali() + "\n━━━━━━━━━━━━━━━\n\n"
@@ -135,6 +129,7 @@ async def main():
         msg += "━━━━━━━━━━━━━━━\n"
         await _send_to_all_async(msg, message_id=f"urgent_{urgent_news[0]['link']}")
 
+    # بخش ب: مقالات علمی
     if journal_news:
         msg = "📚 **مقالات علمی معتبر (دریا و اقلیم)** 📚\n\n"
         msg += "📅 " + now_jalali() + "\n━━━━━━━━━━━━━━━\n\n"
@@ -146,6 +141,7 @@ async def main():
         msg += "━━━━━━━━━━━━━━━\n"
         await _send_to_all_async(msg, message_id=f"journal_{journal_news[0]['link']}")
 
+    # بخش ج: اطلاعات پشتیبان
     if fallback_news:
         msg = "📌 **اطلاعات آرشیوی (دریایی و اقلیمی)** 📌\n\n"
         msg += "📅 " + now_jalali() + "\n━━━━━━━━━━━━━━━\n\n"
