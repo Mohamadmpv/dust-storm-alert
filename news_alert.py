@@ -122,8 +122,9 @@ async def main():
         msg = "🔴 **هشدارهای فوری اقلیمی** 🔴\n\n"
         msg += "📅 " + now_jalali() + "\n━━━━━━━━━━━━━━━\n\n"
         for news in urgent_news:
-            msg += f"🔹 **{news['title']}**\n"
-            msg += f"   {news['description']}\n"
+            # \u202B شروع راست‌چین، \u202C پایان
+            msg += f"🔹 \u202B**{news['title']}**\u202C\n"
+            msg += f"   \u202B{news['description']}\u202C\n"
             msg += f"   🔗 [لینک منبع]({news['link']})\n"
             msg += f"   📌 منبع: {news['source']}\n\n"
         msg += "━━━━━━━━━━━━━━━\n"
@@ -134,8 +135,8 @@ async def main():
         msg = "📚 **مقالات علمی معتبر (دریا و اقلیم)** 📚\n\n"
         msg += "📅 " + now_jalali() + "\n━━━━━━━━━━━━━━━\n\n"
         for news in journal_news:
-            msg += f"🔹 **{news['title']}**\n"
-            msg += f"   {news['description']}\n"
+            msg += f"🔹 \u202B**{news['title']}**\u202C\n"
+            msg += f"   \u202B{news['description']}\u202C\n"
             msg += f"   🔗 [مشاهده اصل مقاله]({news['link']})\n"
             msg += f"   📌 منبع: {news['source']}\n\n"
         msg += "━━━━━━━━━━━━━━━\n"
@@ -146,8 +147,8 @@ async def main():
         msg = "📌 **اطلاعات آرشیوی (دریایی و اقلیمی)** 📌\n\n"
         msg += "📅 " + now_jalali() + "\n━━━━━━━━━━━━━━━\n\n"
         for news in fallback_news:
-            msg += f"🔹 **{news['title']}**\n"
-            msg += f"   {news['text']}\n"
+            msg += f"🔹 \u202B**{news['title']}**\u202C\n"
+            msg += f"   \u202B{news['text']}\u202C\n"
             msg += f"   🔗 {news['link']}\n"
             msg += f"   📌 منبع: {news['source']}\n\n"
         msg += "━━━━━━━━━━━━━━━\n"
