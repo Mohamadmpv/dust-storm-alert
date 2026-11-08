@@ -40,6 +40,12 @@ FALLBACK_NEWS = [
     }
 ]
 
+def clean_text(text):
+    if not text: return ""
+    text = re.sub(r'<[^>]+>', '', text)
+    text = ' '.join(text.split())
+    return text.strip()
+
 def fetch_text_urgent(url, source_name):
     try:
         headers = {'User-Agent': 'Mozilla/5.0'}
@@ -53,7 +59,7 @@ def fetch_text_urgent(url, source_name):
                 important_lines.append(line.strip())
         
         if important_lines:
-            summary = " ".join(important_lines[:3])
+            summary = clean_text(" ".join(important_lines[:3]))
             return [{"title": f"🔴 {source_name}: به‌روزرسانی فوری", "description": summary[:300] + "...", "link": url, "source": source_name}]
         return []
     except Exception as e:
@@ -84,10 +90,9 @@ def fetch_rss_news(source_url, source_name):
             if title is not None and final_link is not None:
                 desc_text = "بدون توضیحات"
                 if description is not None and description.text:
-                    clean_desc = re.sub('<[^<]+?>', '', description.text)
-                    desc_text = clean_desc[:150] + "..."
+                    desc_text = clean_text(description.text[:150] + "...")
                 news_list.append({
-                    "title": title.text,
+                    "title": clean_text(title.text),
                     "link": final_link,
                     "description": desc_text,
                     "source": source_name
@@ -122,9 +127,9 @@ async def main():
         msg = "🔴 **هشدارهای فوری اقلیمی** 🔴\n\n"
         msg += "📅 " + now_jalali() + "\n━━━━━━━━━━━━━━━\n\n"
         for news in urgent_news:
-            # \u202B شروع راست‌چین، \u202C پایان
-            msg += f"🔹 \u202B**{news['title']}**\u202C\n"
-            msg += f"   \u202B{news['description']}\u202C\n"
+            # قرار دادن \u200E در ابتدای خط تا بولت هم چپ‌چین شود
+            msg += f"\u200E🔹 \u202B**{news['title']}**\u202C\n"
+            msg += f"   \u200E{news['description']}\n"
             msg += f"   🔗 [لینک منبع]({news['link']})\n"
             msg += f"   📌 منبع: {news['source']}\n\n"
         msg += "━━━━━━━━━━━━━━━\n"
@@ -135,8 +140,8 @@ async def main():
         msg = "📚 **مقالات علمی معتبر (دریا و اقلیم)** 📚\n\n"
         msg += "📅 " + now_jalali() + "\n━━━━━━━━━━━━━━━\n\n"
         for news in journal_news:
-            msg += f"🔹 \u202B**{news['title']}**\u202C\n"
-            msg += f"   \u202B{news['description']}\u202C\n"
+            msg += f"\u200E🔹 **{news['title']}**\n"
+            msg += f"   \u200E{news['description']}\n"
             msg += f"   🔗 [مشاهده اصل مقاله]({news['link']})\n"
             msg += f"   📌 منبع: {news['source']}\n\n"
         msg += "━━━━━━━━━━━━━━━\n"
