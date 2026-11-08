@@ -12,27 +12,20 @@ from config import GIST_ID, GH_PAT
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding='utf-8')
 
-# --- منابع هشدار فوری و خبری (اولویت اول) ---
+# --- منابع هشدار فوری (اولویت اول) ---
 URGENT_SOURCES = [
-    # هشدارهای رسمی NOAA درباره ال نینو (لینک مستقیم به صفحه به‌روزرسانی)
-    {"name": "NOAA ENSO Advisory", "url": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/ensodisc.txt", "type": "urgent", "link": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/"},
-    # هشدارهای سازمان جهانی هواشناسی
-    {"name": "WMO El Niño Update", "url": "https://wmo.int/", "type": "urgent", "link": "https://wmo.int/"},
+    {"name": "NOAA ENSO Advisory", "url": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/ensodisc.txt", "link": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/"},
+    {"name": "WMO El Niño Update", "url": "https://wmo.int/", "link": "https://wmo.int/"},
 ]
 
-# --- منابع خبری معتبر (اولویت دوم) ---
-NEWS_SOURCES = [
-    {"name": "خبرگزاری صداوسیما (هواشناسی)", "url": "https://www.iribnews.ir/fa/rss", "type": "news"},
-    {"name": "ایسنا (محیط زیست)", "url": "https://www.isna.ir/rss", "type": "news"},
-]
-
-# --- منابع علمی معتبر (اولویت سوم) ---
+# --- منابع علمی معتبر (اولویت دوم) ---
 JOURNAL_SOURCES = [
-    {"name": "JGR: Oceans", "url": "https://agupubs.onlinelibrary.wiley.com/feed/21699291/most-recent", "type": "journal"},
-    {"name": "Marine Pollution Bulletin", "url": "https://rss.sciencedirect.com/publication/science/0025326X", "type": "journal"},
+    {"name": "JGR: Oceans", "url": "https://agupubs.onlinelibrary.wiley.com/feed/21699291/most-recent"},
+    {"name": "Marine Pollution Bulletin", "url": "https://rss.sciencedirect.com/publication/science/0025326X"},
+    {"name": "Ocean & Coastal Management", "url": "https://rss.sciencedirect.com/publication/science/09645691"},
 ]
 
-# --- اخبار پشتیبان (اگر اینترنت قطع بود) ---
+# --- لیست پشتیبان ---
 FALLBACK_NEWS = [
     {
         "id": "fb_elnino",
@@ -51,14 +44,11 @@ FALLBACK_NEWS = [
 ]
 
 def fetch_text_urgent(url, source_name):
-    """دریافت متن ساده از منابع هشدار (مثل NOAA)"""
     try:
         headers = {'User-Agent': 'Mozilla/5.0'}
         r = requests.get(url, headers=headers, timeout=15)
         r.raise_for_status()
         text = r.text
-        
-        # استخراج خطوط مهم (مثلاً Synopsis یا Summary)
         lines = text.split('\n')
         important_lines = []
         for line in lines:
@@ -66,15 +56,14 @@ def fetch_text_urgent(url, source_name):
                 important_lines.append(line.strip())
         
         if important_lines:
-            summary = " ".join(important_lines[:3])  # ۳ خط اول مهم
+            summary = " ".join(important_lines[:3])
             return [{"title": f"🔴 {source_name}: به‌روزرسانی فوری", "description": summary[:300] + "...", "link": url, "source": source_name}]
         return []
     except Exception as e:
         print(f"Error fetching {source_name}: {e}")
         return []
 
-def fetch_rss_news(source_url, source_name, source_type):
-    """دریافت خبر از فید RSS"""
+def fetch_rss_news(source_url, source_name):
     try:
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
         r = requests.get(source_url, headers=headers, timeout=15)
@@ -82,7 +71,7 @@ def fetch_rss_news(source_url, source_name, source_type):
         root = ET.fromstring(r.content)
         items = root.findall('.//item')
         news_list = []
-        for item in items[:2]:  # فقط ۲ خبر آخر
+        for item in items[:3]:
             title = item.find('title')
             guid = item.find('guid')
             link = item.find('link')
@@ -104,137 +93,70 @@ def fetch_rss_news(source_url, source_name, source_type):
                     "title": title.text,
                     "link": final_link,
                     "description": desc_text,
-                    "source": source_name,
-                    "type": source_type
+                    "source": source_name
                 })
         return news_list
     except Exception as e:
         print(f"Error fetching {source_name}: {e}")
         return []
 
-def get_sent_news_urls():
-    try:
-        url = "https://api.github.com/gists/" + str(GIST_ID)
-        headers = {"Authorization": "token " + str(GH_PAT)}
-        r = requests.get(url, headers=headers, timeout=30)
-        r.raise_for_status()
-        content = r.json()["files"].get("sent_news_urls.json", {}).get("content", "")
-        return json.loads(content) if content else []
-    except Exception as e:
-        print(f"Gist read error: {e}")
-        return []
-
-def save_sent_news_urls(new_urls):
-    try:
-        url = "https://api.github.com/gists/" + str(GIST_ID)
-        headers = {"Authorization": "token " + str(GH_PAT)}
-        data = {"files": {"sent_news_urls.json": {"content": json.dumps(new_urls)}}}
-        r = requests.patch(url, headers=headers, json=data, timeout=30)
-        r.raise_for_status()
-        print("Gist memory updated.")
-    except Exception as e:
-        print(f"Gist write error: {e}")
-
-def build_news_message():
-    sent_urls = get_sent_news_urls()
-    new_urls = []
-    urgent_news = []
-    online_news = []
-    journal_news = []
+async def main():
+    print("=" * 60)
+    print("گزارش مقالات علمی و هشدارهای اقلیمی - " + now_jalali())
+    print("=" * 60)
     
-    # ۱. منابع هشدار فوری (NOAA / WMO)
+    # ۱. جمع‌آوری هشدارهای فوری
+    urgent_news = []
     for source in URGENT_SOURCES:
         print(f"Checking urgent source: {source['name']}...")
-        items = fetch_text_urgent(source["url"], source["name"])
-        for item in items:
-            if item["link"] not in sent_urls:
-                urgent_news.append(item)
-                new_urls.append(item["link"])
+        urgent_news.extend(fetch_text_urgent(source["url"], source["name"]))
     
-    # ۲. منابع خبری معتبر
-    for source in NEWS_SOURCES:
-        print(f"Fetching news from {source['name']}...")
-        items = fetch_rss_news(source["url"], source["name"], "news")
-        for item in items:
-            if item["link"] not in sent_urls:
-                online_news.append(item)
-                new_urls.append(item["link"])
-    
-    # ۳. منابع علمی (ژورنال‌ها)
+    # ۲. جمع‌آوری مقالات علمی
+    journal_news = []
     for source in JOURNAL_SOURCES:
         print(f"Fetching journal: {source['name']}...")
-        items = fetch_rss_news(source["url"], source["name"], "journal")
-        for item in items:
-            if item["link"] not in sent_urls:
-                journal_news.append(item)
-                new_urls.append(item["link"])
+        journal_news.extend(fetch_rss_news(source["url"], source["name"]))
     
-    # ۴. اگر هیچ خبری آنلاین نبود، از لیست پشتیبان استفاده کن
+    # ۳. اگر هیچ خبری آنلاین نبود، از لیست پشتیبان استفاده کن
     fallback_news = []
-    if not urgent_news and not online_news and not journal_news:
+    if not urgent_news and not journal_news:
         print("No online news. Using fallback.")
-        for news in FALLBACK_NEWS:
-            if news["id"] not in sent_urls:
-                fallback_news.append(news)
-                new_urls.append(news["id"])
-    
-    # ۵. ساخت پیام (اولویت‌بندی شده)
-    msg = "🌍 **اخبار و هشدارهای اقلیم و دریا** 🌍\n\n"
-    msg += "📅 " + now_jalali() + "\n"
-    msg += "━━━━━━━━━━━━━━━\n\n"
-    
+        fallback_news = FALLBACK_NEWS
+
+    # ۴. ارسال پیام‌ها
     if urgent_news:
-        msg += "🔴 **هشدارهای فوری (ال نینو / اقلیم):**\n\n"
+        msg = "🔴 **هشدارهای فوری اقلیمی** 🔴\n\n"
+        msg += "📅 " + now_jalali() + "\n━━━━━━━━━━━━━━━\n\n"
         for news in urgent_news:
             msg += f"🔹 **{news['title']}**\n"
             msg += f"   {news['description']}\n"
             msg += f"   🔗 [لینک منبع]({news['link']})\n"
             msg += f"   📌 منبع: {news['source']}\n\n"
-    
-    if online_news:
-        msg += "📰 **اخبار معتبر اقلیمی و دریایی:**\n\n"
-        for news in online_news:
-            msg += f"🔹 **{news['title']}**\n"
-            msg += f"   {news['description']}\n"
-            msg += f"   🔗 [لینک خبر]({news['link']})\n"
-            msg += f"   📌 منبع: {news['source']}\n\n"
-    
+        msg += "━━━━━━━━━━━━━━━\n"
+        await _send_to_all_async(msg, message_id=f"urgent_{urgent_news[0]['link']}")
+
     if journal_news:
-        msg += "📚 **مقالات علمی جدید:**\n\n"
+        msg = "📚 **مقالات علمی معتبر (دریا و اقلیم)** 📚\n\n"
+        msg += "📅 " + now_jalali() + "\n━━━━━━━━━━━━━━━\n\n"
         for news in journal_news:
             msg += f"🔹 **{news['title']}**\n"
             msg += f"   {news['description']}\n"
             msg += f"   🔗 [مشاهده اصل مقاله]({news['link']})\n"
             msg += f"   📌 منبع: {news['source']}\n\n"
-    
+        msg += "━━━━━━━━━━━━━━━\n"
+        await _send_to_all_async(msg, message_id=f"journal_{journal_news[0]['link']}")
+
     if fallback_news:
-        msg += "📌 **اطلاعات آرشیوی (دریایی و اقلیمی):**\n\n"
+        msg = "📌 **اطلاعات آرشیوی (دریایی و اقلیمی)** 📌\n\n"
+        msg += "📅 " + now_jalali() + "\n━━━━━━━━━━━━━━━\n\n"
         for news in fallback_news:
-            msg += f"🔹 {news['title']}\n"
+            msg += f"🔹 **{news['title']}**\n"
             msg += f"   {news['text']}\n"
             msg += f"   🔗 {news['link']}\n"
             msg += f"   📌 منبع: {news['source']}\n\n"
-    
-    if not new_urls:
-        msg += "در حال حاضر خبر یا مقاله جدیدی برای ارسال وجود ندارد.\n\n"
-    
-    msg += "━━━━━━━━━━━━━━━\n"
-    return msg, new_urls
+        msg += "━━━━━━━━━━━━━━━\n"
+        await _send_to_all_async(msg, message_id=f"fallback_{fallback_news[0]['id']}")
 
-async def main():
-    print("=" * 60)
-    print("گزارش اخبار اقلیم و دریا - " + now_jalali())
-    print("=" * 60)
-    
-    msg, new_urls = build_news_message()
-    
-    if new_urls:
-        print(f"Sending {len(new_urls)} new items.")
-        await _send_to_all_async(msg)
-        save_sent_news_urls(get_sent_news_urls() + new_urls)
-    else:
-        print("No new items to send. Skipping to avoid spam.")
-        
     print("Done.")
 
 if __name__ == "__main__":
