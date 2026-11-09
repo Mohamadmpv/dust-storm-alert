@@ -13,7 +13,6 @@ BALE_TOKEN = os.getenv("BALE_TOKEN")
 GIST_ID = os.getenv("GIST_ID")
 GH_PAT = os.getenv("GH_PAT")
 
-# آستانه هشدار سیل (میلی‌متر)
 FLOOD_THRESHOLD = 10.0
 
 WEATHER_CITIES = [
@@ -43,11 +42,7 @@ def weather_code_to_text(code):
 
 def get_weather(lat, lon):
     url = "https://api.open-meteo.com/v1/forecast"
-    params = {
-        "latitude": lat, "longitude": lon,
-        "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code",
-        "forecast_days": 2, "timezone": "Asia/Tehran"
-    }
+    params = {"latitude": lat, "longitude": lon, "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code", "forecast_days": 2, "timezone": "Asia/Tehran"}
     try:
         r = requests.get(url, params=params, timeout=60)
         r.raise_for_status()
@@ -65,21 +60,6 @@ def get_air_quality(lat, lon):
     except Exception:
         return None
 
-def get_inversion_status(weather_data):
-    if not weather_data: return "نامشخص"
-    try:
-        daily = weather_data.get("daily", {})
-        if "temperature_2m_max" in daily and "temperature_2m_min" in daily:
-            tmax = daily["temperature_2m_max"][0]
-            tmin = daily["temperature_2m_min"][0]
-            if tmax is not None and tmin is not None:
-                diff = tmax - tmin
-                if diff < 8: return "🔴 احتمال بالای وارونگی دما"
-                elif diff < 12: return "🟡 احتمال متوسط وارونگی دما"
-                else: return "🟢 احتمال کم وارونگی دما"
-    except Exception: pass
-    return "نامشخص"
-
 def get_pm25_status(pm25):
     if pm25 is None: return "نامشخص"
     if pm25 < 12: return "پاک ✅"
@@ -89,12 +69,12 @@ def get_pm25_status(pm25):
     else: return "بسیار ناسالم ⛔"
 
 def build_message():
-    msg = "🌤️ **گزارش روزانه آب‌وهوا و آلودگی هوا** 🌤️\n\n📅 " + now_jalali() + "\n"
+    msg = "🌤️ **گزارش روزانه آب‌وهوا** 🌤️\n\n📅 " + now_jalali() + "\n"
     msg += "━━━━━━━━━━━━━━━\n\n"
     
-    flood_alerts = []  # لیست شهرهایی که احتمال سیل دارند
+    flood_alerts = []
     
-    # 1. آب‌وهوا (و بررسی سیل)
+    # بخش اول: دما و بارش
     msg += "🌡️ **آب‌وهوای فردا (ایران):**\n\n"
     for city in WEATHER_CITIES:
         data = get_weather(city["lat"], city["lon"])
@@ -109,22 +89,22 @@ def build_message():
         
         if rain and rain > 0:
             msg += f"   🌧️ بارش: {round(rain, 1)} mm\n"
-            # بررسی آستانه سیل
             if rain >= FLOOD_THRESHOLD:
                 flood_alerts.append({"name": city["name"], "rain": round(rain, 1)})
         
         msg += "\n"
 
-    # 2. هشدار سیل (اگر وجود دارد)
     if flood_alerts:
         msg += "🚨 **هشدار سیل** 🚨\n\n"
-        msg += "بارش شدید برای فردا پیش‌بینی شده است:\n"
         for fa in flood_alerts:
             msg += f"   ⚠️ **{fa['name']}**: {fa['rain']} mm\n"
-        msg += "\n   لطفاً از تردد در حاشیه رودخانه‌ها و مسیل‌ها خودداری کنید.\n\n"
+        msg += "\n   لطفاً از تردد در حاشیه رودخانه‌ها خودداری کنید.\n\n"
     
-    # 3. آلودگی هوا (برای همه شهرها)
-    msg += "━━━━━━━━━━━━━━━\n\n🏭 **وضعیت آلودگی هوا:**\n\n"
+    # خط جداکننده بزرگ
+    msg += "\n▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬\n\n"
+    
+    # بخش دوم: آلودگی هوا
+    msg += "🏭 **وضعیت آلودگی هوا (شهرهای اصلی):**\n\n"
     for city in WEATHER_CITIES:
         air = get_air_quality(city["lat"], city["lon"])
         if not air or "hourly" not in air: continue
@@ -135,28 +115,13 @@ def build_message():
         if pm25 is not None:
             status = get_pm25_status(pm25)
             msg += f"🔹 **{city['name']}**: PM2.5 = {round(pm25, 1)} μg/m³ ({status})\n"
-            
-            if city["name"] in ["تهران", "اهواز"]:
-                pm10 = h.get("pm10", [None])[0]
-                no2 = h.get("nitrogen_dioxide", [None])[0]
-                weather = get_weather(city["lat"], city["lon"])
-                inversion = get_inversion_status(weather)
-                
-                if pm10 is not None: msg += f"      PM10: {round(pm10, 1)} μg/m³\n"
-                if no2 is not None: msg += f"      NO₂: {round(no2, 1)} μg/m³\n"
-                msg += f"      وارونگی دما: {inversion}\n"
-                
-                if pm25 >= 35.5:
-                    msg += "      ⚠️ **هشدار:** هوا برای گروه‌های حساس ناسالم است.\n"
-        msg += "\n"
 
-    msg += "━━━━━━━━━━━━━━━\n"
+    msg += "\n━━━━━━━━━━━━━━━\n"
     return msg
 
 async def main():
-    print("=" * 60 + "\nگزارش آب‌وهوا و آلودگی - " + now_jalali() + "\n" + "=" * 60)
+    print("=" * 60 + "\nگزارش آب‌وهوا - " + now_jalali() + "\n" + "=" * 60)
     msg = build_message()
-    print("Sending weather report...")
     await notifier._send_to_all_async(msg)
     print("Done.")
 
