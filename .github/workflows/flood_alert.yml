@@ -1,0 +1,22 @@
+name: Flood Alert
+on:
+  schedule:
+    - cron: '30 */2 * * *' # هر 2 ساعت یک بار (پشتیبان)
+  workflow_dispatch:
+
+jobs:
+  run-flood:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - run: pip install -r requirements.txt
+      - name: Run Flood Alert
+        env:
+          BALE_TOKEN: ${{ secrets.BALE_TOKEN }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          GIST_ID: ${{ secrets.GIST_ID }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: python flood_alert.py
