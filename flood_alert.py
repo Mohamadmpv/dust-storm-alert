@@ -1,7 +1,6 @@
 import asyncio
 import requests
 from datetime import datetime, timezone, timedelta
-from zoneinfo import ZoneInfo
 from jalali import now_jalali, to_jalali
 from notifier import _send_to_all_async
 from config import BALE_TOKEN, TELEGRAM_TOKEN, GIST_ID, GH_PAT
@@ -11,7 +10,6 @@ import json
 # آستانه بارش برای هشدار سیل (میلی‌متر در 2 ساعت)
 FLOOD_THRESHOLD_2H = 10.0
 
-# شهرهای مهم برای پایش سیل
 FLOOD_CITIES = [
     {"name": "تهران", "lat": 35.6892, "lon": 51.3890},
     {"name": "تبریز", "lat": 38.0800, "lon": 46.2919},
@@ -48,8 +46,9 @@ async def main():
     print("بررسی فوری سیل - " + now_jalali())
     print("=" * 60)
 
-    tehran_tz = ZoneInfo("Asia/Tehran")
-    now_tehran = datetime.now(tehran_tz)
+    # زمان فعلی به وقت تهران (بدون نیاز به ZoneInfo)
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+    now_tehran = now_utc + timedelta(hours=3, minutes=30)
     
     alerts = []
 
@@ -62,14 +61,17 @@ async def main():
         times = hourly["time"]
         precip = hourly["precipitation"]
         
-        # بررسی 2 ساعت آینده
         total_rain_2h = 0
         has_alert = False
         
         for i, time_str in enumerate(times):
             try:
-                alert_time = datetime.fromisoformat(time_str).replace(tzinfo=tehran_tz)
-                diff_minutes = (alert_time - now_tehran).total_seconds() / 60
+                # زمان API (UTC)
+                alert_time_utc = datetime.fromisoformat(time_str)
+                # تبدیل به تهران
+                alert_time_tehran = alert_time_utc + timedelta(hours=3, minutes=30)
+                
+                diff_minutes = (alert_time_tehran - now_tehran).total_seconds() / 60
                 
                 # اگر زمان بین 0 تا 120 دقیقه آینده بود
                 if 0 <= diff_minutes <= 120:
@@ -99,7 +101,7 @@ async def main():
         msg += "\n📌 **توصیه:** از تردد در حاشیه رودخانه‌ها، مسیل‌ها و مناطق پست خودداری کنید.\n"
         msg += "━━━━━━━━━━━━━━━\n"
         
-        # استفاده از یک شناسه یکتا بر اساس زمان (برای جلوگیری از تکرار در 2 ساعت)
+        # استفاده از یک شناسه یکتا بر اساس زمان (برای جلوگیری از تکرار)
         alert_id = f"flood_{now_tehran.strftime('%Y-%m-%d_%H')}"
         await _send_to_all_async(msg, message_id=alert_id)
         print("Flood alert sent!")
