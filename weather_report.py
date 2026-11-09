@@ -13,7 +13,9 @@ BALE_TOKEN = os.getenv("BALE_TOKEN")
 GIST_ID = os.getenv("GIST_ID")
 GH_PAT = os.getenv("GH_PAT")
 
-# لیست شهرها
+# آستانه هشدار سیل (میلی‌متر)
+FLOOD_THRESHOLD = 10.0
+
 WEATHER_CITIES = [
     {"name": "تهران",     "lat": 35.6892, "lon": 51.3890},
     {"name": "تبریز",     "lat": 38.0800, "lon": 46.2919},
@@ -41,7 +43,11 @@ def weather_code_to_text(code):
 
 def get_weather(lat, lon):
     url = "https://api.open-meteo.com/v1/forecast"
-    params = {"latitude": lat, "longitude": lon, "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code", "forecast_days": 2, "timezone": "Asia/Tehran"}
+    params = {
+        "latitude": lat, "longitude": lon,
+        "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code",
+        "forecast_days": 2, "timezone": "Asia/Tehran"
+    }
     try:
         r = requests.get(url, params=params, timeout=60)
         r.raise_for_status()
@@ -86,22 +92,39 @@ def build_message():
     msg = "🌤️ **گزارش روزانه آب‌وهوا و آلودگی هوا** 🌤️\n\n📅 " + now_jalali() + "\n"
     msg += "━━━━━━━━━━━━━━━\n\n"
     
-    # 1. آب‌وهوا
+    flood_alerts = []  # لیست شهرهایی که احتمال سیل دارند
+    
+    # 1. آب‌وهوا (و بررسی سیل)
     msg += "🌡️ **آب‌وهوای فردا (ایران):**\n\n"
     for city in WEATHER_CITIES:
         data = get_weather(city["lat"], city["lon"])
         if not data or "daily" not in data: continue
         d = data["daily"]
         if len(d["time"]) < 2: continue
+        
         tmax, tmin = d["temperature_2m_max"][1], d["temperature_2m_min"][1]
         rain, code = d["precipitation_sum"][1], d["weather_code"][1]
+        
         msg += f"🔹 **{city['name']}**: {weather_code_to_text(code)}\n   🌡️ {round(tmin, 1)}° تا {round(tmax, 1)}°\n"
-        if rain and rain > 0: msg += f"   🌧️ بارش: {round(rain, 1)} mm\n"
+        
+        if rain and rain > 0:
+            msg += f"   🌧️ بارش: {round(rain, 1)} mm\n"
+            # بررسی آستانه سیل
+            if rain >= FLOOD_THRESHOLD:
+                flood_alerts.append({"name": city["name"], "rain": round(rain, 1)})
+        
         msg += "\n"
 
-    # 2. آلودگی هوا (برای همه شهرها)
-    msg += "━━━━━━━━━━━━━━━\n\n🏭 **وضعیت آلودگی هوا:**\n\n"
+    # 2. هشدار سیل (اگر وجود دارد)
+    if flood_alerts:
+        msg += "🚨 **هشدار سیل** 🚨\n\n"
+        msg += "بارش شدید برای فردا پیش‌بینی شده است:\n"
+        for fa in flood_alerts:
+            msg += f"   ⚠️ **{fa['name']}**: {fa['rain']} mm\n"
+        msg += "\n   لطفاً از تردد در حاشیه رودخانه‌ها و مسیل‌ها خودداری کنید.\n\n"
     
+    # 3. آلودگی هوا (برای همه شهرها)
+    msg += "━━━━━━━━━━━━━━━\n\n🏭 **وضعیت آلودگی هوا:**\n\n"
     for city in WEATHER_CITIES:
         air = get_air_quality(city["lat"], city["lon"])
         if not air or "hourly" not in air: continue
@@ -113,7 +136,6 @@ def build_message():
             status = get_pm25_status(pm25)
             msg += f"🔹 **{city['name']}**: PM2.5 = {round(pm25, 1)} μg/m³ ({status})\n"
             
-            # برای تهران و اهواز جزئیات بیشتر و هشدار
             if city["name"] in ["تهران", "اهواز"]:
                 pm10 = h.get("pm10", [None])[0]
                 no2 = h.get("nitrogen_dioxide", [None])[0]
