@@ -21,17 +21,11 @@ URGENT_POINTS = [
     {"name": "اهواز",       "lat": 31.318,  "lon": 48.670,  "type": "internal"}
 ]
 
-# حافظه موقت برای جلوگیری از ارسال تکراری (در طول یک اجرا)
-sent_alerts_cache = {}
-
 def check_urgent():
-    global sent_alerts_cache
     alerts = []
+    # 1. زمان فعلی دقیق به وقت تهران
     tehran_tz = ZoneInfo("Asia/Tehran")
     now_tehran = datetime.now(tehran_tz)
-
-    # پاکسازی حافظه‌های قدیمی‌تر از 3 ساعت
-    sent_alerts_cache = {k: v for k, v in sent_alerts_cache.items() if (now_tehran - v).total_seconds() < 10800}
 
     for point in URGENT_POINTS:
         wind = get_wind_data(point["lat"], point["lon"])
@@ -44,44 +38,56 @@ def check_urgent():
 
         for i, time_str in enumerate(times):
             try:
+                # 2. تبدیل زمان UTC (دریافتی از API) به وقت تهران
                 alert_time_utc = datetime.fromisoformat(time_str).replace(tzinfo=timezone.utc)
                 alert_time_tehran = alert_time_utc.astimezone(tehran_tz)
+                
+                # 3. محاسبه اختلاف دقیق به دقیقه
                 diff_minutes = (alert_time_tehran - now_tehran).total_seconds() / 60
                 
-                if diff_minutes < -5 or diff_minutes > 120: continue
-            except Exception: continue
+                # 4. فیلتر سخت‌گیرانه: فقط بین 0 تا 120 دقیقه آینده
+                if diff_minutes < 0 or diff_minutes > 120:
+                    continue
+            except Exception:
+                continue
 
             speed = speeds[i]
-            if speed is None or speed <= WIND_SPEED_THRESHOLD: continue
-
-            # بررسی اینکه آیا قبلاً این هشدار را فرستاده‌ایم یا نه
-            alert_key = f"{point['name']}_{alert_time_tehran.strftime('%Y-%m-%d_%H')}"
-            if alert_key in sent_alerts_cache:
-                continue # اگر قبلاً فرستاده شده، نادیده بگیر
+            if speed is None or speed <= WIND_SPEED_THRESHOLD:
+                continue
 
             alerts.append({
                 "point": point["name"],
                 "speed": round(speed, 1),
                 "direction": directions[i],
                 "analysis": analyze_wind_source(point["name"], directions[i]),
-                "time_tehran": alert_time_tehran.strftime("%Y-%m-%d - %H:%M"),
-                "cache_key": alert_key
+                "time_tehran": alert_time_tehran.strftime("%Y-%m-%d - %H:%M")
             })
             break
+
     return alerts
 
 def run_urgent():
-    print("=" * 60 + "\nبررسی اضطراری - " + now_jalali() + "\n" + "=" * 60)
+    print("=" * 60)
+    print("بررسی اضطراری - " + now_jalali())
+    print("=" * 60)
+
     alerts = check_urgent()
-    
+
     if alerts:
-        msg = "🚨 **هشدار فوری طوفان** 🚨\n\n📅 " + now_jalali() + "\n━━━━━━━━━━━━━━━\n\n"
+        msg = "🚨 **هشدار فوری طوفان** 🚨\n\n"
+        msg += "📅 " + now_jalali() + "\n"
+        msg += "━━━━━━━━━━━━━━━\n\n"
+
         for a in alerts:
             date_part, time_part = a["time_tehran"].split(" - ")
-            msg += f"⚠️ {a['point']}\n   💨 سرعت باد: {a['speed']} km/h\n   🧭 جهت باد: {a['direction']} درجه\n   📍 تحلیل: {a['analysis']}\n   🗓️ تاریخ: {date_part}\n   🕐 ساعت: {time_part}\n   📌 باد در ۲ ساعت آینده می‌رسد!\n\n"
-            # ذخیره در حافظه
-            sent_alerts_cache[a["cache_key"]] = datetime.now(ZoneInfo("Asia/Tehran"))
-            
+            msg += f"⚠️ **{a['point']}**\n"
+            msg += f"   💨 سرعت باد: {a['speed']} km/h\n"
+            msg += f"   🧭 جهت باد: {a['direction']} درجه\n"
+            msg += f"   📍 تحلیل: {a['analysis']}\n"
+            msg += f"   🗓️ تاریخ: {date_part}\n"
+            msg += f"   🕐 ساعت: {time_part}\n"
+            msg += "   📌 باد در ۲ ساعت آینده می‌رسد!\n\n"
+
         msg += "━━━━━━━━━━━━━━━\n"
         asyncio.run(_send_to_all(msg))
     else:
