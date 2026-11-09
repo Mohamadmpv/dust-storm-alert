@@ -1,7 +1,7 @@
 name: Storm Alert
 on:
   schedule:
-    - cron: '0 */2 * * *'
+    - cron: '15 */2 * * *' # هر 2 ساعت یک بار (پشتیبان)
   workflow_dispatch:
 
 jobs:
@@ -19,4 +19,4 @@ jobs:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           GIST_ID: ${{ secrets.GIST_ID }}
           GH_PAT: ${{ secrets.GH_PAT }}
-        run: python urgent_check.py   # <--- این خط اصلاح شد
+        run: python urgent_check.py

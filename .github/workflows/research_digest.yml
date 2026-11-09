@@ -1,7 +1,7 @@
 name: Research Digest Alert
 on:
   schedule:
-    - cron: '30 1,13 * * *'  # هر 12 ساعت (30 دقیقه بعد از آب‌وهوا)
+    - cron: '45 7,19 * * *' # ساعت 11:15 صبح و 11:15 شب تهران
   workflow_dispatch:
 
 jobs:
@@ -13,10 +13,10 @@ jobs:
         with:
           python-version: '3.10'
       - run: pip install -r requirements.txt
-      - name: Run Research Digest
+      - name: Run News Alert
         env:
           BALE_TOKEN: ${{ secrets.BALE_TOKEN }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           GIST_ID: ${{ secrets.GIST_ID }}
           GH_PAT: ${{ secrets.GH_PAT }}
-        run: python research_digest.py
+        run: python news_alert.py
