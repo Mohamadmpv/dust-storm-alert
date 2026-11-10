@@ -4,7 +4,6 @@ from notifier import _send_to_all
 from jalali import now_jalali
 from wind_analysis import analyze_wind_source
 from datetime import datetime, timezone, timedelta
-from zoneinfo import ZoneInfo
 import asyncio
 
 URGENT_POINTS = [
@@ -23,9 +22,10 @@ URGENT_POINTS = [
 
 def check_urgent():
     alerts = []
-    # 1. زمان فعلی دقیق به وقت تهران
-    tehran_tz = ZoneInfo("Asia/Tehran")
-    now_tehran = datetime.now(tehran_tz)
+    
+    # زمان فعلی به وقت تهران (بدون نیاز به ZoneInfo)
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+    now_tehran = now_utc + timedelta(hours=3, minutes=30)
 
     for point in URGENT_POINTS:
         wind = get_wind_data(point["lat"], point["lon"])
@@ -38,14 +38,14 @@ def check_urgent():
 
         for i, time_str in enumerate(times):
             try:
-                # 2. تبدیل زمان UTC (دریافتی از API) به وقت تهران
-                alert_time_utc = datetime.fromisoformat(time_str).replace(tzinfo=timezone.utc)
-                alert_time_tehran = alert_time_utc.astimezone(tehran_tz)
+                # زمان API (UTC)
+                alert_time_utc = datetime.fromisoformat(time_str)
+                # تبدیل به تهران
+                alert_time_tehran = alert_time_utc + timedelta(hours=3, minutes=30)
                 
-                # 3. محاسبه اختلاف دقیق به دقیقه
                 diff_minutes = (alert_time_tehran - now_tehran).total_seconds() / 60
                 
-                # 4. فیلتر سخت‌گیرانه: فقط بین 0 تا 120 دقیقه آینده
+                # فقط اگر زمان هشدار بین 0 تا 120 دقیقه آینده باشد
                 if diff_minutes < 0 or diff_minutes > 120:
                     continue
             except Exception:
