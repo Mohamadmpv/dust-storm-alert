@@ -1,7 +1,7 @@
 name: Weather Report
 on:
   schedule:
-    - cron: '45 8,20 * * *' # ساعت 12:15 ظهر و 12:15 شب تهران
+    - cron: '45 8,20 * * *'
   workflow_dispatch:
 
 jobs:

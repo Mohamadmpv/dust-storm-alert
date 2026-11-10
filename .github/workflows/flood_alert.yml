@@ -1,7 +1,7 @@
 name: Flood Alert
 on:
   schedule:
-    - cron: '30 */2 * * *' # هر 2 ساعت یک بار (پشتیبان)
+    - cron: '30 */2 * * *'
   workflow_dispatch:
 
 jobs:

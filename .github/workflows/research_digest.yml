@@ -1,7 +1,7 @@
 name: Research Digest Alert
 on:
   schedule:
-    - cron: '45 7,19 * * *' # ساعت 11:15 صبح و 11:15 شب تهران
+    - cron: '45 7,19 * * *'
   workflow_dispatch:
 
 jobs:

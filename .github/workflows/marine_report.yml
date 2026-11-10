@@ -1,7 +1,7 @@
 name: Marine Report Alert
 on:
   schedule:
-    - cron: '15 8,20 * * *' # ساعت 11:45 صبح و 11:45 شب تهران
+    - cron: '15 8,20 * * *'
   workflow_dispatch:
 
 jobs:
