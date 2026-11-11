@@ -38,9 +38,26 @@ KEYWORD_TOPICS = [
 
 def get_full_weather(lat, lon):
     url = "https://api.open-meteo.com/v1/forecast"
-    params = {"latitude": lat, "longitude": lon, "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,rain_sum,snowfall_sum,weather_code,wind_speed_10m_max", "hourly": "dust,pm10,pm2_5,nitrogen_dioxide", "forecast_days": 2, "timezone": "Asia/Tehran"}
+    params = {"latitude": lat, "longitude": lon, "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,rain_sum,snowfall_sum,weather_code,wind_speed_10m_max", "hourly": "dust,pm10", "forecast_days": 2, "timezone": "Asia/Tehran"}
     try: return requests.get(url, params=params, timeout=30).json()
     except: return None
+
+# --- تابع جدید برای دریافت آلودگی هوا از API اختصاصی ---
+def get_air_quality(lat, lon):
+    url = "https://air-quality-api.open-meteo.com/v1/air-quality"
+    params = {
+        "latitude": lat, "longitude": lon,
+        "hourly": "pm2_5,nitrogen_dioxide",
+        "forecast_days": 1,
+        "timezone": "Asia/Tehran"
+    }
+    try:
+        r = requests.get(url, params=params, timeout=30)
+        r.raise_for_status()
+        return r.json()
+    except Exception as e:
+        print(f"Error fetching air quality: {e}")
+        return None
 
 def get_marine_data(lat, lon):
     url = "https://marine-api.open-meteo.com/v1/marine"
@@ -84,7 +101,7 @@ async def main():
             [InlineKeyboardButton(text="🌧️ بارش (باران/برف)", callback_data="menu_rain")],
             [InlineKeyboardButton(text="🚨 وضعیت طوفان (همه شهرها)", callback_data="menu_storm_cities")],
             [InlineKeyboardButton(text="🌫️ وضعیت گرد و خاک (همه شهرها)", callback_data="menu_dust_cities")],
-            [InlineKeyboardButton(text="🏭 آلودگی هوا (همه شهرها)", callback_data="menu_air_cities")], # <-- تغییر یافت
+            [InlineKeyboardButton(text="🏭 آلودگی هوا (همه شهرها)", callback_data="menu_air_cities")],
             [InlineKeyboardButton(text="📚 جستجوی مقاله علمی", callback_data="menu_search_paper")],
             [InlineKeyboardButton(text="🌀 طوفان‌های حاره‌ای", callback_data="menu_cyclone")],
             [InlineKeyboardButton(text="🌊 خلیج فارس", callback_data="sea_gulf"), InlineKeyboardButton(text="🌊 دریای عمان", callback_data="sea_oman")],
@@ -121,7 +138,6 @@ async def main():
     @dp.callback_query()
     async def on_callback(callback: CallbackQuery):
         data = callback.data
-        
         try:
             await callback.answer()
         except Exception as e:
@@ -132,10 +148,7 @@ async def main():
                 await callback.message.answer("منوی اصلی:", reply_markup=get_main_menu())
 
             elif data == "menu_search_paper":
-                await callback.message.answer(
-                    "📚 **جستجوی مقاله علمی**\n\nلطفاً یکی از موضوعات زیر را انتخاب کنید (مقالات از سال ۲۰۲۰ به بعد):",
-                    reply_markup=get_keyword_menu()
-                )
+                await callback.message.answer("📚 **جستجوی مقاله علمی**\n\nلطفاً یکی از موضوعات زیر را انتخاب کنید (مقالات از سال ۲۰۲۰ به بعد):", reply_markup=get_keyword_menu())
 
             elif data.startswith("kw_") and not data.startswith("kwmore_"):
                 keyword_en = data.replace("kw_", "")
@@ -200,18 +213,20 @@ async def main():
                     msg = f"🌫️ **گرد و خاک {city}:**\n\n🌪️ Dust: {round(dust, 1) if dust else 'نامشخص'} μg/m³\n💨 PM10: {round(pm10, 1) if pm10 else 'نامشخص'} μg/m³"
                     await callback.message.answer(msg)
 
-            # --- بخش جدید آلودگی هوا برای همه شهرها ---
+            # --- بخش اصلاح‌شده آلودگی هوا ---
             elif data == "menu_air_cities":
                 await callback.message.answer("📍 شهر مورد نظر برای بررسی آلودگی هوا را انتخاب کنید:", reply_markup=get_city_menu("air"))
             elif data.startswith("air_"):
                 city = data.replace("air_", "")
                 lat, lon = CITIES[city]
-                res = get_full_weather(lat, lon)
+                res = get_air_quality(lat, lon)  # <-- استفاده از تابع جدید
                 if res and "hourly" in res:
                     pm25 = res["hourly"]["pm2_5"][0]
                     no2 = res["hourly"]["nitrogen_dioxide"][0]
-                    msg = f"🏭 **آلودگی هوای {city}:**\n\n🔹 PM2.5: {round(pm25, 1) if pm25 else 'نامشخص'} μg/m³\n🔹 NO₂: {round(no2, 1) if no2 else 'نامشخص'} μg/m³"
+                    msg = f"🏭 **آلودگی هوای {city}:**\n\n🔹 PM2.5: {round(pm25, 1) if pm25 is not None else 'نامشخص'} μg/m³\n🔹 NO₂: {round(no2, 1) if no2 is not None else 'نامشخص'} μg/m³"
                     await callback.message.answer(msg)
+                else:
+                    await callback.message.answer(f"❌ متاسفانه داده‌های آلودگی هوا برای {city} در دسترس نیست.")
 
             elif data == "menu_weather":
                 await callback.message.answer("📍 شهر مورد نظر را انتخاب کنید:", reply_markup=get_city_menu("w"))
