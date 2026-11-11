@@ -12,17 +12,27 @@ from config import GIST_ID, GH_PAT
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding='utf-8')
 
+# --- ۱. منابع هشدار فوری (اولویت اول) ---
 URGENT_SOURCES = [
     {"name": "NOAA ENSO Advisory", "url": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/ensodisc.txt", "link": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/"},
     {"name": "WMO El Niño Update", "url": "https://wmo.int/", "link": "https://wmo.int/"},
 ]
 
+# --- ۲. منابع علمی و خبری معتبر (اولویت دوم) ---
 JOURNAL_SOURCES = [
+    # منابع قبلی
     {"name": "JGR: Oceans", "url": "https://agupubs.onlinelibrary.wiley.com/feed/21699291/most-recent"},
     {"name": "Marine Pollution Bulletin", "url": "https://rss.sciencedirect.com/publication/science/0025326X"},
     {"name": "Ocean & Coastal Management", "url": "https://rss.sciencedirect.com/publication/science/09645691"},
+    
+    # منابع جدید (Nature, ScienceDaily, NOAA, WMO)
+    {"name": "Nature Climate Change", "url": "https://www.nature.com/nclimate.rss"},
+    {"name": "ScienceDaily Climate", "url": "https://www.sciencedaily.com/rss/earth_climate.xml"},
+    {"name": "NOAA Ocean Service", "url": "https://oceanservice.noaa.gov/rss.html"}, # این لینک ممکن است مستقیم RSS نباشد، اما در کد تلاش می‌شود
+    {"name": "NOAA PMEL", "url": "https://www.pmel.noaa.gov/feed/rss-feed-pmel-whats-new.xml"},
 ]
 
+# --- ۳. لیست پشتیبان (اگر هیچ خبری آنلاین نبود) ---
 FALLBACK_NEWS = [
     {
         "id": "fb_elnino",
