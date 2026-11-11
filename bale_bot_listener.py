@@ -2,7 +2,6 @@ import asyncio
 import logging
 import sys
 import os
-import re
 import requests
 from baleio import Bot, Dispatcher, md, types
 from baleio.client.default import DefaultBotProperties
@@ -29,6 +28,20 @@ CITIES = {
     "همدان": (34.7983, 48.5148), "قم": (34.6416, 50.8746)
 }
 
+# --- لیست کلمات کلیدی آماده برای جستجوی مقاله ---
+KEYWORD_TOPICS = [
+    ("تغییرات اقلیمی", "climate change"),
+    ("ال نینو", "El Nino"),
+    ("گرمایش جهانی", "global warming"),
+    ("مرجان‌های خلیج فارس", "Persian Gulf coral"),
+    ("گرد و غبار", "dust storm"),
+    ("آلودگی هوا", "air pollution"),
+    ("طوفان حاره‌ای", "tropical cyclone"),
+    ("بالا آمدن سطح آب دریا", "sea level rise"),
+    ("خشکسالی", "drought"),
+    ("انرژی‌های تجدیدپذیر", "renewable energy")
+]
+
 def get_full_weather(lat, lon):
     url = "https://api.open-meteo.com/v1/forecast"
     params = {"latitude": lat, "longitude": lon, "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,rain_sum,snowfall_sum,weather_code,wind_speed_10m_max", "hourly": "dust,pm10,pm2_5,nitrogen_dioxide", "forecast_days": 2, "timezone": "Asia/Tehran"}
@@ -41,7 +54,7 @@ def get_marine_data(lat, lon):
     try: return requests.get(url, params=params, timeout=30).json()
     except: return None
 
-def search_openalex(keyword, year_from):
+def search_openalex(keyword, year_from=2020):
     """جستجوی مقالات علمی از OpenAlex"""
     url = "https://api.openalex.org/works"
     params = {
@@ -60,18 +73,9 @@ def search_openalex(keyword, year_from):
             year = work.get("publication_year", "نامشخص")
             doi = work.get("doi", "")
             link = doi if doi else work.get("id", "")
-            # استخراج نام نویسنده اول (اگر وجود داشته باشد)
             authors = work.get("authorships", [])
-            author_name = "نامشخص"
-            if authors:
-                author_name = authors[0].get("author", {}).get("display_name", "نامشخص")
-            
-            results.append({
-                "title": title,
-                "year": year,
-                "link": link,
-                "author": author_name
-            })
+            author_name = authors[0].get("author", {}).get("display_name", "نامشخص") if authors else "نامشخص"
+            results.append({"title": title, "year": year, "link": link, "author": author_name})
         return results
     except Exception as e:
         print(f"Error searching OpenAlex: {e}")
@@ -82,9 +86,6 @@ async def main():
 
     bot = Bot(token=BALE_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN))
     dp = Dispatcher()
-    
-    # متغیر برای ذخیره وضعیت انتظار برای جستجو
-    waiting_for_search = {} 
 
     def get_main_menu():
         keyboard = [
@@ -111,46 +112,25 @@ async def main():
         keyboard.append([InlineKeyboardButton(text="🔙 بازگشت", callback_data="menu_main")])
         return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
+    def get_keyword_menu():
+        """ساخت منوی دکمه‌ای برای کلمات کلیدی"""
+        keyboard = []
+        for i in range(0, len(KEYWORD_TOPICS), 2):
+            row = []
+            row.append(InlineKeyboardButton(text=KEYWORD_TOPICS[i][0], callback_data=f"kw_{KEYWORD_TOPICS[i][1]}"))
+            if i + 1 < len(KEYWORD_TOPICS):
+                row.append(InlineKeyboardButton(text=KEYWORD_TOPICS[i+1][0], callback_data=f"kw_{KEYWORD_TOPICS[i+1][1]}"))
+            keyboard.append(row)
+        keyboard.append([InlineKeyboardButton(text="🔙 بازگشت", callback_data="menu_main")])
+        return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
     @dp.message()
     async def on_message(message: Message):
-        chat_id = message.chat.id
-        text = (message.text or "").strip()
-        
-        # بررسی اینکه آیا کاربر منتظر جستجوی مقاله است؟
-        if waiting_for_search.get(chat_id):
-            # استخراج کلمه کلیدی و سال از متن کاربر (مثلاً "coral reef 2021")
-            match = re.match(r'(.+?)\s+(\d{4})$', text)
-            if match:
-                keyword = match.group(1).strip()
-                year = match.group(2)
-                
-                await message.answer(f"⏳ در حال جستجوی مقالات برای «{keyword}» از سال {year}...")
-                results = search_openalex(keyword, year)
-                
-                if results:
-                    msg = f"📚 **نتایج جستجو برای «{keyword}» (از {year} به بعد):**\n\n━━━━━━━━━━━━━━━\n\n"
-                    for i, res in enumerate(results, 1):
-                        msg += f"{i}. **{res['title']}**\n"
-                        msg += f"   👤 نویسنده: {res['author']} | 📅 سال: {res['year']}\n"
-                        msg += f"   🔗 [مشاهده مقاله]({res['link']})\n\n"
-                    msg += "━━━━━━━━━━━━━━━\n"
-                    await message.answer(msg)
-                else:
-                    await message.answer("❌ مقاله‌ای با این مشخصات یافت نشد. لطفاً کلمه کلیدی دیگری امتحان کنید.")
-                
-                # پایان وضعیت انتظار
-                waiting_for_search[chat_id] = False
-                await message.answer("برای جستجوی جدید، دوباره روی دکمه «📚 جستجوی مقاله علمی» کلیک کنید.", reply_markup=get_main_menu())
-            else:
-                await message.answer("⚠️ فرمت صحیح نیست. لطفاً کلمه کلیدی و سال را با فاصله بفرستید (مثلاً: `coral reef 2021`).")
-        else:
-            # منوی اصلی برای پیام‌های معمولی
-            await message.answer("👋 **به داشبورد اقلیم خوش آمدید.**\nیک گزینه را انتخاب کنید:", reply_markup=get_main_menu())
+        await message.answer("👋 **به داشبورد اقلیم خوش آمدید.**\nیک گزینه را انتخاب کنید:", reply_markup=get_main_menu())
 
     @dp.callback_query()
     async def on_callback(callback: CallbackQuery):
         data = callback.data
-        chat_id = callback.message.chat.id
         
         try:
             await callback.answer()
@@ -160,16 +140,36 @@ async def main():
         try:
             if data == "menu_main":
                 await callback.message.answer("منوی اصلی:", reply_markup=get_main_menu())
-                waiting_for_search[chat_id] = False
 
+            # --- منوی کلمات کلیدی ---
             elif data == "menu_search_paper":
-                waiting_for_search[chat_id] = True
                 await callback.message.answer(
                     "📚 **جستجوی مقاله علمی**\n\n"
-                    "لطفاً کلمه کلیدی و سال شروع را با یک فاصله بفرستید.\n"
-                    "مثال: `El Nino 2020` یا `coral reef 2021`"
+                    "لطفاً یکی از موضوعات زیر را انتخاب کنید تا ۵ مقاله جدید (از سال ۲۰۲۰ به بعد) برای شما نمایش داده شود:",
+                    reply_markup=get_keyword_menu()
                 )
 
+            # --- جستجوی مقاله بر اساس کلمه کلیدی انتخاب شده ---
+            elif data.startswith("kw_"):
+                keyword_en = data.replace("kw_", "")
+                await callback.message.answer(f"⏳ در حال جستجوی مقالات برای «{keyword_en}» از سال ۲۰۲۰...")
+                
+                results = search_openalex(keyword_en, 2020)
+                if results:
+                    msg = f"📚 **نتایج جستجو برای «{keyword_en}» (از سال ۲۰۲۰):**\n\n━━━━━━━━━━━━━━━\n\n"
+                    for i, res in enumerate(results, 1):
+                        msg += f"{i}. **{res['title']}**\n"
+                        msg += f"   👤 {res['author']} | 📅 {res['year']}\n"
+                        msg += f"   🔗 [مشاهده مقاله]({res['link']})\n\n"
+                    msg += "━━━━━━━━━━━━━━━\n"
+                    await callback.message.answer(msg)
+                else:
+                    await callback.message.answer("❌ مقاله‌ای با این مشخصات یافت نشد.")
+                
+                # بازگشت به منوی کلمات کلیدی
+                await callback.message.answer("برای جستجوی موضوع دیگر، یکی از گزینه‌ها را انتخاب کنید:", reply_markup=get_keyword_menu())
+
+            # --- طوفان‌های حاره‌ای ---
             elif data == "menu_cyclone":
                 await callback.message.answer("⏳ در حال دریافت آخرین اطلاعات طوفان‌های حاره‌ای...")
                 msg = "🌀 **وضعیت طوفان‌های حاره‌ای در خلیج فارس و دریای عمان:**\n\n"
@@ -178,6 +178,7 @@ async def main():
                 msg += "🔗 https://www.rsmcnewdelhi.imd.gov.in/"
                 await callback.message.answer(msg)
 
+            # --- طوفان برای همه شهرها ---
             elif data == "menu_storm_cities":
                 await callback.message.answer("📍 شهر مورد نظر برای بررسی طوفان را انتخاب کنید:", reply_markup=get_city_menu("storm"))
             elif data.startswith("storm_"):
@@ -192,6 +193,7 @@ async def main():
                         msg = f"✅ **وضعیت طوفان {city}:**\nسرعت باد: {round(wind, 1) if wind else 0} km/h\nعادی است."
                     await callback.message.answer(msg)
 
+            # --- گرد و خاک برای همه شهرها ---
             elif data == "menu_dust_cities":
                 await callback.message.answer("📍 شهر مورد نظر برای بررسی گرد و خاک را انتخاب کنید:", reply_markup=get_city_menu("dust"))
             elif data.startswith("dust_"):
@@ -204,6 +206,7 @@ async def main():
                     msg = f"🌫️ **گرد و خاک {city}:**\n\n🌪️ Dust: {round(dust, 1) if dust else 'نامشخص'} μg/m³\n💨 PM10: {round(pm10, 1) if pm10 else 'نامشخص'} μg/m³"
                     await callback.message.answer(msg)
 
+            # --- بقیه بخش‌ها ---
             elif data == "menu_weather":
                 await callback.message.answer("📍 شهر مورد نظر را انتخاب کنید:", reply_markup=get_city_menu("w"))
             elif data == "menu_rain":
