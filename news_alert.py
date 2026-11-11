@@ -44,7 +44,6 @@ FALLBACK_NEWS = [
 ]
 
 def clean_text(text, max_length=500):
-    """پاکسازی متن از تگ‌های HTML و محدود کردن طول"""
     if not text: return ""
     text = re.sub(r'<[^>]+>', '', text)
     text = ' '.join(text.split())
@@ -53,7 +52,6 @@ def clean_text(text, max_length=500):
     return text.strip()
 
 def fetch_text_urgent(url, source_name):
-    """دریافت هشدارهای فوری از منابع متنی (مثل NOAA)"""
     try:
         headers = {'User-Agent': 'Mozilla/5.0'}
         r = requests.get(url, headers=headers, timeout=15)
@@ -74,7 +72,6 @@ def fetch_text_urgent(url, source_name):
         return []
 
 def fetch_rss_news(source_url, source_name):
-    """دریافت مقالات از فیدهای RSS"""
     try:
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
         r = requests.get(source_url, headers=headers, timeout=15)
@@ -143,6 +140,7 @@ async def main():
             msg += f"   🔗 [لینک منبع]({news['link']})\n"
             msg += f"   📌 منبع: {news['source']}\n\n"
         msg += "━━━━━━━━━━━━━━━\n"
+        print("Sending urgent news...")
         await _send_to_all_async(msg, message_id=f"urgent_{urgent_news[0]['link']}")
 
     if journal_news:
@@ -154,9 +152,11 @@ async def main():
             msg += f"   🔗 [مشاهده اصل مقاله]({news['link']})\n"
             msg += f"   📌 منبع: {news['source']}\n\n"
         msg += "━━━━━━━━━━━━━━━\n"
+        print("Sending journal news...")
         await _send_to_all_async(msg, message_id=f"journal_{journal_news[0]['link']}")
 
-    if fallback_news:
+    # اگر هیچ خبری ارسال نشد، حتماً فال‌بک را بفرست
+    if not urgent_news and not journal_news and fallback_news:
         msg = "📌 **اطلاعات آرشیوی (دریایی و اقلیمی)** 📌\n\n"
         msg += "📅 " + now_jalali() + "\n━━━━━━━━━━━━━━━\n\n"
         for news in fallback_news:
@@ -165,6 +165,7 @@ async def main():
             msg += f"   🔗 {news['link']}\n"
             msg += f"   📌 منبع: {news['source']}\n\n"
         msg += "━━━━━━━━━━━━━━━\n"
+        print("Sending fallback news...")
         await _send_to_all_async(msg, message_id=f"fallback_{fallback_news[0]['id']}")
 
     print("Done.")
