@@ -97,5 +97,12 @@ def train_models():
     
     print("\nModels trained successfully!")
 
+    # ذخیره مدل‌های آموزش‌دیده
+    lstm_swh.save('model_lstm_swh.h5')
+    gru_swh.save('model_gru_swh.h5')
+    lstm_sst.save('model_lstm_sst.h5')
+    gru_sst.save('model_gru_sst.h5')
+    print("\nModels saved successfully as .h5 files!")
+
 if __name__ == "__main__":
     train_models()
