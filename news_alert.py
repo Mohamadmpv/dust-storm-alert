@@ -130,7 +130,7 @@ async def main():
         print("No online news. Using fallback.")
         fallback_news = FALLBACK_NEWS
 
-    # ۴. ارسال پیام‌ها
+      # ۴. ارسال پیام‌ها
     if urgent_news:
         msg = "🔴 **هشدارهای فوری اقلیمی** 🔴\n\n"
         msg += "📅 " + now_jalali() + "\n━━━━━━━━━━━━━━━\n\n"
@@ -140,7 +140,6 @@ async def main():
             msg += f"   🔗 [لینک منبع]({news['link']})\n"
             msg += f"   📌 منبع: {news['source']}\n\n"
         msg += "━━━━━━━━━━━━━━━\n"
-        print("Sending urgent news...")
         await _send_to_all_async(msg, message_id=f"urgent_{urgent_news[0]['link']}")
 
     if journal_news:
@@ -152,7 +151,6 @@ async def main():
             msg += f"   🔗 [مشاهده اصل مقاله]({news['link']})\n"
             msg += f"   📌 منبع: {news['source']}\n\n"
         msg += "━━━━━━━━━━━━━━━\n"
-        print("Sending journal news...")
         await _send_to_all_async(msg, message_id=f"journal_{journal_news[0]['link']}")
 
     # اگر هیچ خبری ارسال نشد، حتماً فال‌بک را بفرست
@@ -165,7 +163,6 @@ async def main():
             msg += f"   🔗 {news['link']}\n"
             msg += f"   📌 منبع: {news['source']}\n\n"
         msg += "━━━━━━━━━━━━━━━\n"
-        print("Sending fallback news...")
         await _send_to_all_async(msg, message_id=f"fallback_{fallback_news[0]['id']}")
 
     print("Done.")
