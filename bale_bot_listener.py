@@ -49,14 +49,10 @@ def get_marine_data(lat, lon):
     except: return None
 
 def search_openalex(keyword, year_from=2020, page=1):
-    """جستجوی مقالات علمی از OpenAlex با قابلیت صفحه‌بندی"""
     url = "https://api.openalex.org/works"
     params = {
-        "search": keyword,
-        "filter": f"from_publication_date:{year_from}-01-01",
-        "sort": "relevance_score:desc",
-        "per_page": 5,
-        "page": page
+        "search": keyword, "filter": f"from_publication_date:{year_from}-01-01",
+        "sort": "relevance_score:desc", "per_page": 5, "page": page
     }
     try:
         r = requests.get(url, params=params, timeout=30)
@@ -88,7 +84,7 @@ async def main():
             [InlineKeyboardButton(text="🌧️ بارش (باران/برف)", callback_data="menu_rain")],
             [InlineKeyboardButton(text="🚨 وضعیت طوفان (همه شهرها)", callback_data="menu_storm_cities")],
             [InlineKeyboardButton(text="🌫️ وضعیت گرد و خاک (همه شهرها)", callback_data="menu_dust_cities")],
-            [InlineKeyboardButton(text="🏭 آلودگی هوا", callback_data="menu_air")],
+            [InlineKeyboardButton(text="🏭 آلودگی هوا (همه شهرها)", callback_data="menu_air_cities")], # <-- تغییر یافت
             [InlineKeyboardButton(text="📚 جستجوی مقاله علمی", callback_data="menu_search_paper")],
             [InlineKeyboardButton(text="🌀 طوفان‌های حاره‌ای", callback_data="menu_cyclone")],
             [InlineKeyboardButton(text="🌊 خلیج فارس", callback_data="sea_gulf"), InlineKeyboardButton(text="🌊 دریای عمان", callback_data="sea_oman")],
@@ -137,60 +133,45 @@ async def main():
 
             elif data == "menu_search_paper":
                 await callback.message.answer(
-                    "📚 **جستجوی مقاله علمی**\n\n"
-                    "لطفاً یکی از موضوعات زیر را انتخاب کنید (مقالات از سال ۲۰۲۰ به بعد):",
+                    "📚 **جستجوی مقاله علمی**\n\nلطفاً یکی از موضوعات زیر را انتخاب کنید (مقالات از سال ۲۰۲۰ به بعد):",
                     reply_markup=get_keyword_menu()
                 )
 
-            # --- جستجوی مقاله (صفحه اول) ---
             elif data.startswith("kw_") and not data.startswith("kwmore_"):
                 keyword_en = data.replace("kw_", "")
                 await callback.message.answer(f"⏳ در حال جستجوی مقالات برای «{keyword_en}» از سال ۲۰۲۰...")
-                
                 results = search_openalex(keyword_en, 2020, page=1)
                 if results:
                     msg = f"📚 **نتایج جستجو برای «{keyword_en}» (صفحه ۱):**\n\n━━━━━━━━━━━━━━━\n\n"
                     for i, res in enumerate(results, 1):
                         msg += f"{i}. **{res['title']}**\n   👤 {res['author']} | 📅 {res['year']}\n   🔗 [مشاهده مقاله]({res['link']})\n\n"
                     msg += "━━━━━━━━━━━━━━━\n"
-                    
-                    # دکمه صفحه بعد
                     keyboard = [[InlineKeyboardButton(text="📄 مقالات بیشتر (صفحه بعد)", callback_data=f"kwmore_{keyword_en}_2")]]
                     keyboard.append([InlineKeyboardButton(text="🔙 بازگشت به موضوعات", callback_data="menu_search_paper")])
-                    
                     await callback.message.answer(msg, reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard))
                 else:
                     await callback.message.answer("❌ مقاله‌ای با این مشخصات یافت نشد.")
 
-            # --- دریافت مقالات بیشتر (صفحه‌های بعدی) ---
             elif data.startswith("kwmore_"):
                 parts = data.replace("kwmore_", "").split("_")
                 keyword_en = parts[0]
                 page = int(parts[1])
-                
                 await callback.message.answer(f"⏳ در حال دریافت مقالات بیشتر برای «{keyword_en}» (صفحه {page})...")
-                
                 results = search_openalex(keyword_en, 2020, page=page)
                 if results:
                     msg = f"📚 **نتایج جستجو برای «{keyword_en}» (صفحه {page}):**\n\n━━━━━━━━━━━━━━━\n\n"
                     for i, res in enumerate(results, 1):
                         msg += f"{i}. **{res['title']}**\n   👤 {res['author']} | 📅 {res['year']}\n   🔗 [مشاهده مقاله]({res['link']})\n\n"
                     msg += "━━━━━━━━━━━━━━━\n"
-                    
-                    # دکمه صفحه بعد (صفحه بعدی)
                     keyboard = [[InlineKeyboardButton(text="📄 مقالات بیشتر (صفحه بعد)", callback_data=f"kwmore_{keyword_en}_{page + 1}")]]
                     keyboard.append([InlineKeyboardButton(text="🔙 بازگشت به موضوعات", callback_data="menu_search_paper")])
-                    
                     await callback.message.answer(msg, reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard))
                 else:
                     await callback.message.answer("❌ مقاله بیشتری یافت نشد.")
 
             elif data == "menu_cyclone":
                 await callback.message.answer("⏳ در حال دریافت آخرین اطلاعات طوفان‌های حاره‌ای...")
-                msg = "🌀 **وضعیت طوفان‌های حاره‌ای در خلیج فارس و دریای عمان:**\n\n"
-                msg += "بر اساس آخرین داده‌های مرکز هواشناسی هند (IMD)، در حال حاضر طوفان حاره‌ای فعالی در این مناطق گزارش نشده است.\n\n"
-                msg += "📌 برای دریافت هشدارهای فوری، به کانال‌های رسمی هواشناسی مراجعه کنید.\n"
-                msg += "🔗 https://www.rsmcnewdelhi.imd.gov.in/"
+                msg = "🌀 **وضعیت طوفان‌های حاره‌ای در خلیج فارس و دریای عمان:**\n\nبر اساس آخرین داده‌ها، در حال حاضر طوفان فعالی گزارش نشده است.\n\n🔗 https://www.rsmcnewdelhi.imd.gov.in/"
                 await callback.message.answer(msg)
 
             elif data == "menu_storm_cities":
@@ -219,6 +200,19 @@ async def main():
                     msg = f"🌫️ **گرد و خاک {city}:**\n\n🌪️ Dust: {round(dust, 1) if dust else 'نامشخص'} μg/m³\n💨 PM10: {round(pm10, 1) if pm10 else 'نامشخص'} μg/m³"
                     await callback.message.answer(msg)
 
+            # --- بخش جدید آلودگی هوا برای همه شهرها ---
+            elif data == "menu_air_cities":
+                await callback.message.answer("📍 شهر مورد نظر برای بررسی آلودگی هوا را انتخاب کنید:", reply_markup=get_city_menu("air"))
+            elif data.startswith("air_"):
+                city = data.replace("air_", "")
+                lat, lon = CITIES[city]
+                res = get_full_weather(lat, lon)
+                if res and "hourly" in res:
+                    pm25 = res["hourly"]["pm2_5"][0]
+                    no2 = res["hourly"]["nitrogen_dioxide"][0]
+                    msg = f"🏭 **آلودگی هوای {city}:**\n\n🔹 PM2.5: {round(pm25, 1) if pm25 else 'نامشخص'} μg/m³\n🔹 NO₂: {round(no2, 1) if no2 else 'نامشخص'} μg/m³"
+                    await callback.message.answer(msg)
+
             elif data == "menu_weather":
                 await callback.message.answer("📍 شهر مورد نظر را انتخاب کنید:", reply_markup=get_city_menu("w"))
             elif data == "menu_rain":
@@ -230,8 +224,7 @@ async def main():
                 res = get_full_weather(lat, lon)
                 if res and "daily" in res:
                     d = res["daily"]
-                    msg = f"🌤️ **{city} (فردا):**\n\n🌡️ دما: {round(d['temperature_2m_min'][1], 1)}° تا {round(d['temperature_2m_max'][1], 1)}°\n"
-                    msg += f"🌧️ بارش کل: {round(d['precipitation_sum'][1], 1) if d['precipitation_sum'][1] else 0} mm"
+                    msg = f"🌤️ **{city} (فردا):**\n\n🌡️ دما: {round(d['temperature_2m_min'][1], 1)}° تا {round(d['temperature_2m_max'][1], 1)}°\n🌧️ بارش کل: {round(d['precipitation_sum'][1], 1) if d['precipitation_sum'][1] else 0} mm"
                     await callback.message.answer(msg)
 
             elif data.startswith("rain_"):
@@ -243,15 +236,6 @@ async def main():
                     rain = d['rain_sum'][1] if d['rain_sum'][1] else 0
                     snow = d['snowfall_sum'][1] if d['snowfall_sum'][1] else 0
                     msg = f"🌧️ **میزان بارش {city} (فردا):**\n\n☔ باران: {round(rain, 1)} میلی‌متر\n❄️ برف: {round(snow, 1)} سانتی‌متر"
-                    await callback.message.answer(msg)
-
-            elif data == "menu_air":
-                lat, lon = CITIES["تهران"]
-                res = get_full_weather(lat, lon)
-                if res and "hourly" in res:
-                    pm25 = res["hourly"]["pm2_5"][0]
-                    no2 = res["hourly"]["nitrogen_dioxide"][0]
-                    msg = f"🏭 **آلودگی هوای تهران:**\n\n🔹 PM2.5: {round(pm25, 1) if pm25 else 'نامشخص'} μg/m³\n🔹 NO₂: {round(no2, 1) if no2 else 'نامشخص'} μg/m³"
                     await callback.message.answer(msg)
 
             elif data == "sea_gulf":
