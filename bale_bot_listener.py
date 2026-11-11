@@ -28,18 +28,12 @@ CITIES = {
     "همدان": (34.7983, 48.5148), "قم": (34.6416, 50.8746)
 }
 
-# --- لیست کلمات کلیدی آماده برای جستجوی مقاله ---
 KEYWORD_TOPICS = [
-    ("تغییرات اقلیمی", "climate change"),
-    ("ال نینو", "El Nino"),
-    ("گرمایش جهانی", "global warming"),
-    ("مرجان‌های خلیج فارس", "Persian Gulf coral"),
-    ("گرد و غبار", "dust storm"),
-    ("آلودگی هوا", "air pollution"),
-    ("طوفان حاره‌ای", "tropical cyclone"),
-    ("بالا آمدن سطح آب دریا", "sea level rise"),
-    ("خشکسالی", "drought"),
-    ("انرژی‌های تجدیدپذیر", "renewable energy")
+    ("تغییرات اقلیمی", "climate change"), ("ال نینو", "El Nino"),
+    ("گرمایش جهانی", "global warming"), ("مرجان‌های خلیج فارس", "Persian Gulf coral"),
+    ("گرد و غبار", "dust storm"), ("آلودگی هوا", "air pollution"),
+    ("طوفان حاره‌ای", "tropical cyclone"), ("بالا آمدن سطح آب دریا", "sea level rise"),
+    ("خشکسالی", "drought"), ("انرژی‌های تجدیدپذیر", "renewable energy")
 ]
 
 def get_full_weather(lat, lon):
@@ -54,14 +48,15 @@ def get_marine_data(lat, lon):
     try: return requests.get(url, params=params, timeout=30).json()
     except: return None
 
-def search_openalex(keyword, year_from=2020):
-    """جستجوی مقالات علمی از OpenAlex"""
+def search_openalex(keyword, year_from=2020, page=1):
+    """جستجوی مقالات علمی از OpenAlex با قابلیت صفحه‌بندی"""
     url = "https://api.openalex.org/works"
     params = {
         "search": keyword,
         "filter": f"from_publication_date:{year_from}-01-01",
         "sort": "relevance_score:desc",
-        "per_page": 5
+        "per_page": 5,
+        "page": page
     }
     try:
         r = requests.get(url, params=params, timeout=30)
@@ -113,7 +108,6 @@ async def main():
         return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
     def get_keyword_menu():
-        """ساخت منوی دکمه‌ای برای کلمات کلیدی"""
         keyboard = []
         for i in range(0, len(KEYWORD_TOPICS), 2):
             row = []
@@ -141,35 +135,56 @@ async def main():
             if data == "menu_main":
                 await callback.message.answer("منوی اصلی:", reply_markup=get_main_menu())
 
-            # --- منوی کلمات کلیدی ---
             elif data == "menu_search_paper":
                 await callback.message.answer(
                     "📚 **جستجوی مقاله علمی**\n\n"
-                    "لطفاً یکی از موضوعات زیر را انتخاب کنید تا ۵ مقاله جدید (از سال ۲۰۲۰ به بعد) برای شما نمایش داده شود:",
+                    "لطفاً یکی از موضوعات زیر را انتخاب کنید (مقالات از سال ۲۰۲۰ به بعد):",
                     reply_markup=get_keyword_menu()
                 )
 
-            # --- جستجوی مقاله بر اساس کلمه کلیدی انتخاب شده ---
-            elif data.startswith("kw_"):
+            # --- جستجوی مقاله (صفحه اول) ---
+            elif data.startswith("kw_") and not data.startswith("kwmore_"):
                 keyword_en = data.replace("kw_", "")
                 await callback.message.answer(f"⏳ در حال جستجوی مقالات برای «{keyword_en}» از سال ۲۰۲۰...")
                 
-                results = search_openalex(keyword_en, 2020)
+                results = search_openalex(keyword_en, 2020, page=1)
                 if results:
-                    msg = f"📚 **نتایج جستجو برای «{keyword_en}» (از سال ۲۰۲۰):**\n\n━━━━━━━━━━━━━━━\n\n"
+                    msg = f"📚 **نتایج جستجو برای «{keyword_en}» (صفحه ۱):**\n\n━━━━━━━━━━━━━━━\n\n"
                     for i, res in enumerate(results, 1):
-                        msg += f"{i}. **{res['title']}**\n"
-                        msg += f"   👤 {res['author']} | 📅 {res['year']}\n"
-                        msg += f"   🔗 [مشاهده مقاله]({res['link']})\n\n"
+                        msg += f"{i}. **{res['title']}**\n   👤 {res['author']} | 📅 {res['year']}\n   🔗 [مشاهده مقاله]({res['link']})\n\n"
                     msg += "━━━━━━━━━━━━━━━\n"
-                    await callback.message.answer(msg)
+                    
+                    # دکمه صفحه بعد
+                    keyboard = [[InlineKeyboardButton(text="📄 مقالات بیشتر (صفحه بعد)", callback_data=f"kwmore_{keyword_en}_2")]]
+                    keyboard.append([InlineKeyboardButton(text="🔙 بازگشت به موضوعات", callback_data="menu_search_paper")])
+                    
+                    await callback.message.answer(msg, reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard))
                 else:
                     await callback.message.answer("❌ مقاله‌ای با این مشخصات یافت نشد.")
-                
-                # بازگشت به منوی کلمات کلیدی
-                await callback.message.answer("برای جستجوی موضوع دیگر، یکی از گزینه‌ها را انتخاب کنید:", reply_markup=get_keyword_menu())
 
-            # --- طوفان‌های حاره‌ای ---
+            # --- دریافت مقالات بیشتر (صفحه‌های بعدی) ---
+            elif data.startswith("kwmore_"):
+                parts = data.replace("kwmore_", "").split("_")
+                keyword_en = parts[0]
+                page = int(parts[1])
+                
+                await callback.message.answer(f"⏳ در حال دریافت مقالات بیشتر برای «{keyword_en}» (صفحه {page})...")
+                
+                results = search_openalex(keyword_en, 2020, page=page)
+                if results:
+                    msg = f"📚 **نتایج جستجو برای «{keyword_en}» (صفحه {page}):**\n\n━━━━━━━━━━━━━━━\n\n"
+                    for i, res in enumerate(results, 1):
+                        msg += f"{i}. **{res['title']}**\n   👤 {res['author']} | 📅 {res['year']}\n   🔗 [مشاهده مقاله]({res['link']})\n\n"
+                    msg += "━━━━━━━━━━━━━━━\n"
+                    
+                    # دکمه صفحه بعد (صفحه بعدی)
+                    keyboard = [[InlineKeyboardButton(text="📄 مقالات بیشتر (صفحه بعد)", callback_data=f"kwmore_{keyword_en}_{page + 1}")]]
+                    keyboard.append([InlineKeyboardButton(text="🔙 بازگشت به موضوعات", callback_data="menu_search_paper")])
+                    
+                    await callback.message.answer(msg, reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard))
+                else:
+                    await callback.message.answer("❌ مقاله بیشتری یافت نشد.")
+
             elif data == "menu_cyclone":
                 await callback.message.answer("⏳ در حال دریافت آخرین اطلاعات طوفان‌های حاره‌ای...")
                 msg = "🌀 **وضعیت طوفان‌های حاره‌ای در خلیج فارس و دریای عمان:**\n\n"
@@ -178,7 +193,6 @@ async def main():
                 msg += "🔗 https://www.rsmcnewdelhi.imd.gov.in/"
                 await callback.message.answer(msg)
 
-            # --- طوفان برای همه شهرها ---
             elif data == "menu_storm_cities":
                 await callback.message.answer("📍 شهر مورد نظر برای بررسی طوفان را انتخاب کنید:", reply_markup=get_city_menu("storm"))
             elif data.startswith("storm_"):
@@ -193,7 +207,6 @@ async def main():
                         msg = f"✅ **وضعیت طوفان {city}:**\nسرعت باد: {round(wind, 1) if wind else 0} km/h\nعادی است."
                     await callback.message.answer(msg)
 
-            # --- گرد و خاک برای همه شهرها ---
             elif data == "menu_dust_cities":
                 await callback.message.answer("📍 شهر مورد نظر برای بررسی گرد و خاک را انتخاب کنید:", reply_markup=get_city_menu("dust"))
             elif data.startswith("dust_"):
@@ -206,7 +219,6 @@ async def main():
                     msg = f"🌫️ **گرد و خاک {city}:**\n\n🌪️ Dust: {round(dust, 1) if dust else 'نامشخص'} μg/m³\n💨 PM10: {round(pm10, 1) if pm10 else 'نامشخص'} μg/m³"
                     await callback.message.answer(msg)
 
-            # --- بقیه بخش‌ها ---
             elif data == "menu_weather":
                 await callback.message.answer("📍 شهر مورد نظر را انتخاب کنید:", reply_markup=get_city_menu("w"))
             elif data == "menu_rain":
@@ -259,7 +271,7 @@ async def main():
         except Exception as e:
             print(f"Error processing callback: {e}")
             try:
-                await callback.message.answer("❌ متاسفانه در پردازش درخواست شما خطایی رخ داد. لطفاً دوباره تلاش کنید.")
+                await callback.message.answer("❌ متاسفانه در پردازش درخواست شما خطایی رخ داد.")
             except:
                 pass
 
