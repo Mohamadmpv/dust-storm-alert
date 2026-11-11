@@ -42,22 +42,11 @@ def get_full_weather(lat, lon):
     try: return requests.get(url, params=params, timeout=30).json()
     except: return None
 
-# --- تابع جدید برای دریافت گرد و خاک از API کیفیت هوا ---
 def get_dust_data(lat, lon):
     url = "https://air-quality-api.open-meteo.com/v1/air-quality"
-    params = {
-        "latitude": lat, "longitude": lon,
-        "hourly": "dust,pm10",
-        "forecast_days": 1,
-        "timezone": "Asia/Tehran"
-    }
-    try:
-        r = requests.get(url, params=params, timeout=30)
-        r.raise_for_status()
-        return r.json()
-    except Exception as e:
-        print(f"Error fetching dust: {e}")
-        return None
+    params = {"latitude": lat, "longitude": lon, "hourly": "dust,pm10", "forecast_days": 1, "timezone": "Asia/Tehran"}
+    try: return requests.get(url, params=params, timeout=30).json()
+    except: return None
 
 def get_air_quality(lat, lon):
     url = "https://air-quality-api.open-meteo.com/v1/air-quality"
@@ -169,7 +158,7 @@ async def main():
 
             # --- طوفان حاره‌ای ---
             elif data == "menu_cyclone":
-                await callback.message.answer("🌀 **طوفان‌های حاره‌ای:**\n\nدر حال حاضر طوفان فعالی در خلیج فارس و دریای عمان گزارش نشده است.\n🔗 https://www.rsmcnewdelhi.imd.gov.in/")
+                await callback.message.answer("🌀 **طوفان‌های حاره‌ای:**\n\nدر حال حاضر طوفان فعالی در خلیج فارس و دریای عمان گزارش نشده است.\n🔗 https://www.rsmcnewdelhi.imd.gov.in/", reply_markup=get_main_menu())
 
             # --- طوفان شهرها ---
             elif data == "menu_storm_cities":
@@ -180,30 +169,27 @@ async def main():
                 if res and "daily" in res:
                     wind = res["daily"]["wind_speed_10m_max"][1]
                     wind_val = round(wind, 1) if wind else 0
-                    if wind_val > 60: analysis = "🚨 **خطرناک:** سرعت باد بالای ۶۰ کیلومتر است. از تردد در فضای باز خودداری کنید."
-                    elif wind_val > 40: analysis = "⚠️ **هشدار:** باد نسبتاً شدید است. احتمال گرد و خاک و اختلال در تردد وجود دارد."
-                    elif wind_val > 20: analysis = "🌬️ **نسیم:** باد ملایم تا متوسط است."
-                    else: analysis = "✅ **آرام:** هوا کاملاً آرام است."
+                    if wind_val > 60: analysis = "🚨 **خطرناک:** سرعت باد بالای ۶۰ کیلومتر است."
+                    elif wind_val > 40: analysis = "⚠️ **هشدار:** باد نسبتاً شدید است."
+                    elif wind_val > 20: analysis = "🌬️ **نسیم:** باد ملایم است."
+                    else: analysis = "✅ **آرام:** هوا آرام است."
                     msg = f"🚨 **وضعیت طوفان {city}:**\n\n💨 سرعت باد: {wind_val} km/h\n\n📌 **تحلیل:** {analysis}"
-                    await callback.message.answer(msg)
+                    await callback.message.answer(msg, reply_markup=get_main_menu())
 
-            # --- گرد و خاک (اصلاح‌شده با API جدید) ---
+            # --- گرد و خاک ---
             elif data == "menu_dust_cities":
                 await callback.message.answer("📍 شهر را انتخاب کنید:", reply_markup=get_city_menu("dust"))
             elif data.startswith("dust_"):
                 city = data.replace("dust_", "")
-                # استفاده از تابع جدید get_dust_data
                 res = get_dust_data(*CITIES[city])
                 if res and "hourly" in res:
                     dust = res["hourly"]["dust"][0]
                     pm10 = res["hourly"]["pm10"][0]
-                    if dust is not None and dust > 50: analysis = "🔴 **هشدار:** گرد و خاک زیاد است. برای بیماران تنفسی مضر است."
-                    elif dust is not None and dust > 20: analysis = "🟡 **متوسط:** گرد و خاک ملایم وجود دارد. افراد حساس ماسک بزنند."
-                    else: analysis = "🟢 **پاک:** هوا از نظر گرد و خاک تمیز است."
+                    if dust is not None and dust > 50: analysis = "🔴 **هشدار:** گرد و خاک زیاد است."
+                    elif dust is not None and dust > 20: analysis = "🟡 **متوسط:** گرد و خاک ملایم وجود دارد."
+                    else: analysis = "🟢 **پاک:** هوا تمیز است."
                     msg = f"🌫️ **گرد و خاک {city}:**\n\n🌪️ Dust: {round(dust, 1) if dust is not None else 'نامشخص'} μg/m³\n💨 PM10: {round(pm10, 1) if pm10 is not None else 'نامشخص'} μg/m³\n\n📌 **تحلیل:** {analysis}"
-                    await callback.message.answer(msg)
-                else:
-                    await callback.message.answer(f"❌ داده‌های گرد و خاک برای {city} در دسترس نیست.")
+                    await callback.message.answer(msg, reply_markup=get_main_menu())
 
             # --- آلودگی هوا ---
             elif data == "menu_air_cities":
@@ -218,13 +204,13 @@ async def main():
                     if pm25 is None: status, advice = "نامشخص", "داده‌ای نیست."
                     elif pm25 < 12: status, advice = "پاک ✅", "هوا کاملاً سالم است."
                     elif pm25 < 35.5: status, advice = "قابل قبول 🟡", "هوا مناسب است."
-                    elif pm25 < 55.5: status, advice = "ناسالم برای گروه‌های حساس 🟠", "سالمندان و کودکان فعالیت در فضای باز را کاهش دهند."
+                    elif pm25 < 55.5: status, advice = "ناسالم برای گروه‌های حساس 🟠", "سالمندان و کودکان احتیاط کنند."
                     elif pm25 < 150.5: status, advice = "ناسالم 🔴", "همه افراد اثرات سلامتی را تجربه می‌کنند."
                     else: status, advice = "بسیار ناسالم ⛔", "همه افراد باید در خانه بمانند."
                     msg = f"🏭 **آلودگی هوای {city}:**\n\n🔹 PM2.5: {round(pm25, 1) if pm25 is not None else 'نامشخص'} μg/m³\n🔹 NO₂: {round(no2, 1) if no2 is not None else 'نامشخص'} μg/m³\n"
                     if ozone is not None: msg += f"🔹 ازن (O₃): {round(ozone, 1)} μg/m³\n"
                     msg += f"\n📊 **وضعیت:** {status}\n📌 **توصیه:** {advice}"
-                    await callback.message.answer(msg)
+                    await callback.message.answer(msg, reply_markup=get_main_menu())
 
             # --- آب و هوا ---
             elif data == "menu_weather":
@@ -242,7 +228,7 @@ async def main():
                     elif rain < 15: analysis = "🌧️ **بارش متوسط:** باران قابل توجهی می‌بارد."
                     else: analysis = "⛈️ **بارش شدید:** احتمال سیل و آب‌گرفتگی."
                     msg = f"🌤️ **آب‌وهوای {city} (فردا):**\n\n🌡️ دما: {tmin}° تا {tmax}°\n🌧️ بارش: {rain} mm\n\n📌 **تحلیل:** {analysis}"
-                    await callback.message.answer(msg)
+                    await callback.message.answer(msg, reply_markup=get_main_menu())
 
             # --- بارش ---
             elif data == "menu_rain":
@@ -259,7 +245,7 @@ async def main():
                     elif snow > 0: analysis = "❄️ **برفی:** لباس گرم و زنجیر چرخ لازم است."
                     else: analysis = "🌧️ **بارانی:** لباس ضدآب همراه داشته باشید."
                     msg = f"🌧️ **میزان بارش {city} (فردا):**\n\n☔ باران: {round(rain, 1)} mm\n❄️ برف: {round(snow, 1)} cm\n\n📌 **تحلیل:** {analysis}"
-                    await callback.message.answer(msg)
+                    await callback.message.answer(msg, reply_markup=get_main_menu())
 
             # --- دریاها ---
             elif data == "sea_gulf":
@@ -272,7 +258,7 @@ async def main():
                     elif wave_val >= 1.5: analysis = "⚠️ **متلاطم:** شناگران احتیاط کنند."
                     else: analysis = "🌊 **آرام:** برای تفریحات آبی مناسب است."
                     msg = f"🌊 **خلیج فارس:**\n\n📏 موج: {wave_val} متر\n🌡️ دمای آب: {round(sst, 1) if sst else 'نامشخص'} °C\n\n📌 {analysis}"
-                    await callback.message.answer(msg)
+                    await callback.message.answer(msg, reply_markup=get_main_menu())
 
             elif data == "sea_oman":
                 res = get_marine_data(25.0, 58.0)
@@ -284,11 +270,11 @@ async def main():
                     elif wave_val >= 1.5: analysis = "⚠️ **متلاطم:** احتیاط کنید."
                     else: analysis = "🌊 **آرام:** دریا آرام است."
                     msg = f"🌊 **دریای عمان:**\n\n📏 موج: {wave_val} متر\n🌡️ دمای آب: {round(sst, 1) if sst else 'نامشخص'} °C\n\n📌 {analysis}"
-                    await callback.message.answer(msg)
+                    await callback.message.answer(msg, reply_markup=get_main_menu())
 
         except Exception as e:
             print(f"Error: {e}")
-            try: await callback.message.answer("❌ خطایی رخ داد. لطفاً دوباره تلاش کنید.")
+            try: await callback.message.answer("❌ خطایی رخ داد. لطفاً دوباره تلاش کنید.", reply_markup=get_main_menu())
             except: pass
 
     await dp.start_polling(bot)
