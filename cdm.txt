@@ -1,2 +1,0 @@
-C:\dust-storm-alert>
-cd /d C:\dust-storm-alert
