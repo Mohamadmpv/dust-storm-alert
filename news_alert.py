@@ -12,20 +12,17 @@ from config import GIST_ID, GH_PAT
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding='utf-8')
 
-# --- ۱. منابع هشدار فوری (اولویت اول) ---
 URGENT_SOURCES = [
     {"name": "NOAA ENSO Advisory", "url": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/ensodisc.txt", "link": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/"},
     {"name": "WMO El Niño Update", "url": "https://wmo.int/", "link": "https://wmo.int/"},
 ]
 
-# --- ۲. منابع علمی معتبر (اولویت دوم) ---
 JOURNAL_SOURCES = [
     {"name": "JGR: Oceans", "url": "https://agupubs.onlinelibrary.wiley.com/feed/21699291/most-recent"},
     {"name": "Marine Pollution Bulletin", "url": "https://rss.sciencedirect.com/publication/science/0025326X"},
     {"name": "Ocean & Coastal Management", "url": "https://rss.sciencedirect.com/publication/science/09645691"},
 ]
 
-# --- ۳. لیست پشتیبان (اگر هیچ خبری آنلاین نبود) ---
 FALLBACK_NEWS = [
     {
         "id": "fb_elnino",
@@ -112,25 +109,21 @@ async def main():
     print("گزارش اخبار اقلیم و دریا - " + now_jalali())
     print("=" * 60)
     
-    # ۱. جمع‌آوری هشدارهای فوری
     urgent_news = []
     for source in URGENT_SOURCES:
         print(f"Checking urgent source: {source['name']}...")
         urgent_news.extend(fetch_text_urgent(source["url"], source["name"]))
     
-    # ۲. جمع‌آوری مقالات علمی
     journal_news = []
     for source in JOURNAL_SOURCES:
         print(f"Fetching journal: {source['name']}...")
         journal_news.extend(fetch_rss_news(source["url"], source["name"]))
     
-    # ۳. اگر هیچ خبری آنلاین نبود، از لیست پشتیبان استفاده کن
     fallback_news = []
     if not urgent_news and not journal_news:
         print("No online news. Using fallback.")
         fallback_news = FALLBACK_NEWS
 
-      # ۴. ارسال پیام‌ها
     if urgent_news:
         msg = "🔴 **هشدارهای فوری اقلیمی** 🔴\n\n"
         msg += "📅 " + now_jalali() + "\n━━━━━━━━━━━━━━━\n\n"
@@ -140,6 +133,7 @@ async def main():
             msg += f"   🔗 [لینک منبع]({news['link']})\n"
             msg += f"   📌 منبع: {news['source']}\n\n"
         msg += "━━━━━━━━━━━━━━━\n"
+        print("Sending urgent news...")
         await _send_to_all_async(msg, message_id=f"urgent_{urgent_news[0]['link']}")
 
     if journal_news:
@@ -151,9 +145,9 @@ async def main():
             msg += f"   🔗 [مشاهده اصل مقاله]({news['link']})\n"
             msg += f"   📌 منبع: {news['source']}\n\n"
         msg += "━━━━━━━━━━━━━━━\n"
+        print("Sending journal news...")
         await _send_to_all_async(msg, message_id=f"journal_{journal_news[0]['link']}")
 
-    # اگر هیچ خبری ارسال نشد، حتماً فال‌بک را بفرست
     if not urgent_news and not journal_news and fallback_news:
         msg = "📌 **اطلاعات آرشیوی (دریایی و اقلیمی)** 📌\n\n"
         msg += "📅 " + now_jalali() + "\n━━━━━━━━━━━━━━━\n\n"
@@ -163,6 +157,7 @@ async def main():
             msg += f"   🔗 {news['link']}\n"
             msg += f"   📌 منبع: {news['source']}\n\n"
         msg += "━━━━━━━━━━━━━━━\n"
+        print("Sending fallback news...")
         await _send_to_all_async(msg, message_id=f"fallback_{fallback_news[0]['id']}")
 
     print("Done.")
