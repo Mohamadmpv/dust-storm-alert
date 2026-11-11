@@ -53,10 +53,25 @@ async def _send_to_bale(msg):
     url = f"https://tapi.bale.ai/bot{BALE_TOKEN}/sendMessage"
     for cid in users.keys():
         try:
+            # ارسال پیام اصلی
             r = requests.post(url, json={"chat_id": cid, "text": msg}, timeout=30)
-            if r.status_code == 200: success = True
-            print(f"Bale Sent: {cid}")
-        except Exception as e: print(f"Bale Failed {cid}: {e}")
+            if r.status_code == 200: 
+                success = True
+                print(f"Bale Sent: {cid}")
+                
+                # ارسال دکمه بازگشت به منو
+                reply_markup = {
+                    "inline_keyboard": [[{"text": "🔙 بازگشت به منو", "callback_data": "menu_main"}]]
+                }
+                requests.post(url, json={
+                    "chat_id": cid, 
+                    "text": "برای مشاهده منو، روی دکمه زیر کلیک کنید:", 
+                    "reply_markup": reply_markup
+                }, timeout=30)
+            else:
+                print(f"Bale Failed {cid}: {r.text}")
+        except Exception as e: 
+            print(f"Bale Failed {cid}: {e}")
     return success
 
 async def _send_to_telegram(msg):
