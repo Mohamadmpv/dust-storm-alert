@@ -12,45 +12,37 @@ from config import GIST_ID, GH_PAT
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding='utf-8')
 
-# --- ۱. منابع هشدار فوری (اولویت اول) ---
+# --- ۱. منابع هشدار فوری ---
 URGENT_SOURCES = [
     {"name": "NOAA ENSO Advisory", "url": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/ensodisc.txt", "link": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/"},
     {"name": "WMO El Niño Update", "url": "https://wmo.int/", "link": "https://wmo.int/"},
 ]
 
-# --- ۲. منابع علمی و خبری معتبر (اولویت دوم) ---
+# --- ۲. منابع علمی (کمی محدودتر برای جلوگیری از طولانی شدن) ---
 JOURNAL_SOURCES = [
-    # منابع قبلی
     {"name": "JGR: Oceans", "url": "https://agupubs.onlinelibrary.wiley.com/feed/21699291/most-recent"},
-    {"name": "Marine Pollution Bulletin", "url": "https://rss.sciencedirect.com/publication/science/0025326X"},
-    {"name": "Ocean & Coastal Management", "url": "https://rss.sciencedirect.com/publication/science/09645691"},
-    
-    # منابع جدید (Nature, ScienceDaily, NOAA, WMO)
     {"name": "Nature Climate Change", "url": "https://www.nature.com/nclimate.rss"},
     {"name": "ScienceDaily Climate", "url": "https://www.sciencedaily.com/rss/earth_climate.xml"},
-    {"name": "NOAA Ocean Service", "url": "https://oceanservice.noaa.gov/rss.html"}, # این لینک ممکن است مستقیم RSS نباشد، اما در کد تلاش می‌شود
-    {"name": "NOAA PMEL", "url": "https://www.pmel.noaa.gov/feed/rss-feed-pmel-whats-new.xml"},
 ]
 
-# --- ۳. لیست پشتیبان (اگر هیچ خبری آنلاین نبود) ---
 FALLBACK_NEWS = [
     {
         "id": "fb_elnino",
-        "title": "🔴 هشدار فوری: ال نینو در حال تشدید است (NOAA - اکتبر ۲۰۲۶)",
-        "text": "مرکز پیش‌بینی اقلیم آمریکا (NOAA) اعلام کرد: ال نینو در حال تقویت است و احتمال یک رویداد «تاریخی» (قوی‌تر از تمام رکوردهای ۱۹۵۰) بین ۸۳ تا ۷۰ درصد است. سازمان هواشناسی ایران نیز هشدار داده که این پدیده بارش‌ها را سیل‌آسا و نقطه‌ای می‌کند.",
+        "title": "🔴 هشدار فوری: ال نینو در حال تشدید است",
+        "text": "مرکز پیش‌بینی اقلیم آمریکا (NOAA) اعلام کرد: ال نینو در حال تقویت است و احتمال یک رویداد «تاریخی» بین ۸۳ تا ۷۰ درصد است.",
         "link": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/",
-        "source": "NOAA / سازمان هواشناسی"
+        "source": "NOAA"
     },
     {
         "id": "fb_coral",
         "title": "وضعیت مرجان‌های خلیج فارس",
-        "text": "رئیس مرکز اقیانوس‌شناسی خلیج فارس: دمای آب در تابستان به بیش از ۳۶ درجه می‌رسد و مرجان‌ها در آستانه تنش حرارتی شدید هستند. گرمایش اقیانوس‌ها زنجیره غذایی را تهدید می‌کند.",
+        "text": "دمای آب در تابستان به بیش از ۳۶ درجه می‌رسد و مرجان‌ها در آستانه تنش حرارتی شدید هستند.",
         "link": "https://7sobh.com/",
         "source": "هفت صبح"
     }
 ]
 
-def clean_text(text, max_length=500):
+def clean_text(text, max_length=150):  # <-- کاهش طول متن به 150 کاراکتر
     if not text: return ""
     text = re.sub(r'<[^>]+>', '', text)
     text = ' '.join(text.split())
@@ -71,7 +63,7 @@ def fetch_text_urgent(url, source_name):
                 important_lines.append(line.strip())
         
         if important_lines:
-            summary = clean_text(" ".join(important_lines[:5]), 500)
+            summary = clean_text(" ".join(important_lines[:2]), 150) # فقط 2 خط اول
             return [{"title": f"🔴 {source_name}: به‌روزرسانی فوری", "description": summary, "link": url, "source": source_name}]
         return []
     except Exception as e:
@@ -86,7 +78,7 @@ def fetch_rss_news(source_url, source_name):
         root = ET.fromstring(r.content)
         items = root.findall('.//item')
         news_list = []
-        for item in items[:3]:
+        for item in items[:1]: # فقط 1 خبر از هر منبع
             title = item.find('title')
             guid = item.find('guid')
             link = item.find('link')
@@ -102,9 +94,9 @@ def fetch_rss_news(source_url, source_name):
             if title is not None and final_link is not None:
                 desc_text = "بدون توضیحات"
                 if description is not None and description.text:
-                    desc_text = clean_text(description.text, 500)
+                    desc_text = clean_text(description.text, 150)
                 news_list.append({
-                    "title": clean_text(title.text, 200),
+                    "title": clean_text(title.text, 100),
                     "link": final_link,
                     "description": desc_text,
                     "source": source_name
