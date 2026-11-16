@@ -1,7 +1,7 @@
 name: Marine Data Collection
 on:
   schedule:
-    - cron: '0 */6 * * *' # هر 6 ساعت
+    - cron: '0 */6 * * *'
   workflow_dispatch:
 
 jobs:
@@ -20,7 +20,7 @@ jobs:
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-          git pull origin main --rebase
           git add persian_gulf_marine_data.csv
           git commit -m "Update marine data CSV" || echo "No changes to commit"
+          git pull origin main --rebase
           git push
