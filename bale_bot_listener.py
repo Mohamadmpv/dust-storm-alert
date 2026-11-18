@@ -3,15 +3,12 @@ import logging
 import sys
 import os
 import requests
-from datetime import datetime
 from baleio import Bot, Dispatcher, md, types
 from baleio.client.default import DefaultBotProperties
 from baleio.enums import ParseMode
 from baleio.types import Message, CallbackQuery
 from baleio.types import InlineKeyboardMarkup, InlineKeyboardButton
 from dotenv import load_dotenv
-from fetch_news import get_news
-from notifier import _send_to_all_async
 
 load_dotenv()
 
@@ -80,36 +77,11 @@ def search_openalex(keyword, year_from=2020, page=1):
         return results
     except: return []
 
-async def auto_news_sender(bot):
-    """ارسال خودکار اخبار و هشدارها هر ساعت یک بار"""
-    last_run_hour = -1
-    while True:
-        now = datetime.now()
-        if now.hour != last_run_hour and now.minute == 0:
-            print(f"[{now.strftime('%H:%M')}] اجرای خودکار اخبار...")
-            try:
-                # اینجا مستقیماً از news_alert.py استفاده نمی‌کنیم چون آن یک اسکریپت جداست.
-                # به جای آن، از تابع get_news() برای دریافت اخبار و ارسال استفاده می‌کنیم.
-                news_list = get_news()
-                if news_list:
-                    msg = "📚 **اخبار خودکار اقلیم** 📚\n\n"
-                    for item in news_list[:3]:
-                        msg += f"🔹 **{item['title']}**\n   {item['text']}\n   🔗 {item['link']}\n   📌 منبع: {item['source']}\n\n"
-                    await _send_to_all_async(msg, message_id=f"auto_news_{now.strftime('%Y-%m-%d_%H')}")
-                    print("اخبار خودکار ارسال شد.")
-            except Exception as e:
-                print(f"خطا در ارسال خودکار: {e}")
-            last_run_hour = now.hour
-        await asyncio.sleep(60) # هر 60 ثانیه چک می‌کند
-
 async def main():
     print("=" * 60 + "\nربات جامع اقلیم روشن شد...\n" + "=" * 60)
 
     bot = Bot(token=BALE_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN))
     dp = Dispatcher()
-
-    # شروع تایمر خودکار اخبار
-    asyncio.create_task(auto_news_sender(bot))
 
     def get_main_menu():
         keyboard = [
