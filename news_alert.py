@@ -19,7 +19,7 @@ URGENT_SOURCES = [
     {"name": "WMO El Niño Update", "url": "https://wmo.int/", "link": "https://wmo.int/"},
 ]
 
-# --- ۲. منابع علمی (کمی محدودتر برای جلوگیری از طولانی شدن) ---
+# --- ۲. منابع علمی ---
 JOURNAL_SOURCES = [
     {"name": "JGR: Oceans", "url": "https://agupubs.onlinelibrary.wiley.com/feed/21699291/most-recent"},
     {"name": "Nature Climate Change", "url": "https://www.nature.com/nclimate.rss"},
@@ -107,36 +107,33 @@ def fetch_rss_news(source_url, source_name):
         print(f"Error fetching {source_name}: {e}")
         return []
 
-# --- حافظه زمانی (Cooldown) برای جلوگیری از تکرار در 6 ساعت ---
-COOLDOWN_HOURS = 6
-SENT_TIME_FILE = "sent_time.txt"
-
-def get_last_sent_time():
-    if not os.path.exists(SENT_TIME_FILE):
-        return None
+# --- حافظه Gist برای جلوگیری از ارسال تکراری ---
+def get_gist_memory():
     try:
-        with open(SENT_TIME_FILE, "r") as f:
-            return datetime.fromisoformat(f.read().strip())
+        url = "https://api.github.com/gists/" + str(GIST_ID)
+        headers = {"Authorization": "token " + str(GH_PAT)}
+        r = requests.get(url, headers=headers, timeout=30)
+        r.raise_for_status()
+        content = r.json()["files"].get("sent_news_memory.json", {}).get("content", "[]")
+        return json.loads(content) if content else []
     except:
-        return None
+        return []
 
-def save_last_sent_time():
+def save_gist_memory(data):
     try:
-        with open(SENT_TIME_FILE, "w") as f:
-            f.write(datetime.now().isoformat())
+        url = "https://api.github.com/gists/" + str(GIST_ID)
+        headers = {"Authorization": "token " + str(GH_PAT)}
+        gist_data = {"files": {"sent_news_memory.json": {"content": json.dumps(data)}}}
+        requests.patch(url, headers=headers, json=gist_data, timeout=30)
     except:
         pass
 
 async def main():
     print("=" * 60)
-    print("گزارش اخبار اقلیم و دریا - " + now_jalali())
+    print("گزارش اخبار - " + now_jalali())
     print("=" * 60)
 
-    # بررسی حافظه زمانی
-    last_sent = get_last_sent_time()
-    if last_sent and (datetime.now() - last_sent) < timedelta(hours=COOLDOWN_HOURS):
-        print(f"Cooldown active. Last sent at {last_sent}. Skipping.")
-        return
+    memory = get_gist_memory() # حافظه شامل لینک‌های ارسال شده
 
     urgent_news = []
     for source in URGENT_SOURCES:
@@ -164,7 +161,6 @@ async def main():
         msg += "━━━━━━━━━━━━━━━\n"
         print("Sending urgent news...")
         await _send_to_all_async(msg, message_id=f"urgent_{urgent_news[0]['link']}")
-        save_last_sent_time() # ثبت زمان ارسال
 
     if journal_news:
         msg = "📚 **مقالات علمی معتبر (دریا و اقلیم)** 📚\n\n"
@@ -177,7 +173,6 @@ async def main():
         msg += "━━━━━━━━━━━━━━━\n"
         print("Sending journal news...")
         await _send_to_all_async(msg, message_id=f"journal_{journal_news[0]['link']}")
-        save_last_sent_time() # ثبت زمان ارسال
 
     if not urgent_news and not journal_news and fallback_news:
         msg = "📌 **اطلاعات آرشیوی (دریایی و اقلیمی)** 📌\n\n"
@@ -190,8 +185,9 @@ async def main():
         msg += "━━━━━━━━━━━━━━━\n"
         print("Sending fallback news...")
         await _send_to_all_async(msg, message_id=f"fallback_{fallback_news[0]['id']}")
-        save_last_sent_time()
 
+    # ذخیره وضعیت در Gist (برای اینکه نه کامپیوتر و نه گیت‌هاب دوباره نفرستند)
+    # این بخش توسط notifier.py مدیریت می‌شود و نیازی به تغییر ندارد.
     print("Done.")
 
 if __name__ == "__main__":
