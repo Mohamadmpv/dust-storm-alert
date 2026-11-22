@@ -5,6 +5,7 @@ import requests
 import asyncio
 import xml.etree.ElementTree as ET
 import re
+from datetime import datetime, timedelta
 from jalali import now_jalali
 from notifier import _send_to_all_async
 from config import GIST_ID, GH_PAT
@@ -42,7 +43,7 @@ FALLBACK_NEWS = [
     }
 ]
 
-def clean_text(text, max_length=150):  # <-- کاهش طول متن به 150 کاراکتر
+def clean_text(text, max_length=150):
     if not text: return ""
     text = re.sub(r'<[^>]+>', '', text)
     text = ' '.join(text.split())
@@ -63,7 +64,7 @@ def fetch_text_urgent(url, source_name):
                 important_lines.append(line.strip())
         
         if important_lines:
-            summary = clean_text(" ".join(important_lines[:2]), 150) # فقط 2 خط اول
+            summary = clean_text(" ".join(important_lines[:2]), 150)
             return [{"title": f"🔴 {source_name}: به‌روزرسانی فوری", "description": summary, "link": url, "source": source_name}]
         return []
     except Exception as e:
@@ -78,7 +79,7 @@ def fetch_rss_news(source_url, source_name):
         root = ET.fromstring(r.content)
         items = root.findall('.//item')
         news_list = []
-        for item in items[:1]: # فقط 1 خبر از هر منبع
+        for item in items[:1]:
             title = item.find('title')
             guid = item.find('guid')
             link = item.find('link')
@@ -106,11 +107,37 @@ def fetch_rss_news(source_url, source_name):
         print(f"Error fetching {source_name}: {e}")
         return []
 
+# --- حافظه زمانی (Cooldown) برای جلوگیری از تکرار در 6 ساعت ---
+COOLDOWN_HOURS = 6
+SENT_TIME_FILE = "sent_time.txt"
+
+def get_last_sent_time():
+    if not os.path.exists(SENT_TIME_FILE):
+        return None
+    try:
+        with open(SENT_TIME_FILE, "r") as f:
+            return datetime.fromisoformat(f.read().strip())
+    except:
+        return None
+
+def save_last_sent_time():
+    try:
+        with open(SENT_TIME_FILE, "w") as f:
+            f.write(datetime.now().isoformat())
+    except:
+        pass
+
 async def main():
     print("=" * 60)
     print("گزارش اخبار اقلیم و دریا - " + now_jalali())
     print("=" * 60)
-    
+
+    # بررسی حافظه زمانی
+    last_sent = get_last_sent_time()
+    if last_sent and (datetime.now() - last_sent) < timedelta(hours=COOLDOWN_HOURS):
+        print(f"Cooldown active. Last sent at {last_sent}. Skipping.")
+        return
+
     urgent_news = []
     for source in URGENT_SOURCES:
         print(f"Checking urgent source: {source['name']}...")
@@ -137,6 +164,7 @@ async def main():
         msg += "━━━━━━━━━━━━━━━\n"
         print("Sending urgent news...")
         await _send_to_all_async(msg, message_id=f"urgent_{urgent_news[0]['link']}")
+        save_last_sent_time() # ثبت زمان ارسال
 
     if journal_news:
         msg = "📚 **مقالات علمی معتبر (دریا و اقلیم)** 📚\n\n"
@@ -149,6 +177,7 @@ async def main():
         msg += "━━━━━━━━━━━━━━━\n"
         print("Sending journal news...")
         await _send_to_all_async(msg, message_id=f"journal_{journal_news[0]['link']}")
+        save_last_sent_time() # ثبت زمان ارسال
 
     if not urgent_news and not journal_news and fallback_news:
         msg = "📌 **اطلاعات آرشیوی (دریایی و اقلیمی)** 📌\n\n"
@@ -161,6 +190,7 @@ async def main():
         msg += "━━━━━━━━━━━━━━━\n"
         print("Sending fallback news...")
         await _send_to_all_async(msg, message_id=f"fallback_{fallback_news[0]['id']}")
+        save_last_sent_time()
 
     print("Done.")
 
