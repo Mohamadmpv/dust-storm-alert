@@ -5,7 +5,6 @@ import requests
 import asyncio
 import xml.etree.ElementTree as ET
 import re
-from datetime import datetime
 from jalali import now_jalali
 from notifier import _send_to_all_async
 from config import GIST_ID, GH_PAT
@@ -13,18 +12,20 @@ from config import GIST_ID, GH_PAT
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding='utf-8')
 
-# --- منابع خبری (دقیقاً همان‌هایی که خودتان داشتید) ---
+# --- ۱. منابع هشدار فوری ---
 URGENT_SOURCES = [
     {"name": "NOAA ENSO Advisory", "url": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/ensodisc.txt", "link": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/"},
     {"name": "WMO El Niño Update", "url": "https://wmo.int/", "link": "https://wmo.int/"},
 ]
 
+# --- ۲. منابع علمی (بدون ScienceDaily که خبر تکراری می‌داد) ---
 JOURNAL_SOURCES = [
     {"name": "JGR: Oceans", "url": "https://agupubs.onlinelibrary.wiley.com/feed/21699291/most-recent"},
     {"name": "Nature Climate Change", "url": "https://www.nature.com/nclimate.rss"},
-    {"name": "ScienceDaily Climate", "url": "https://www.sciencedaily.com/rss/earth_climate.xml"},
+    {"name": "Marine Pollution Bulletin", "url": "https://rss.sciencedirect.com/publication/science/0025326X"},
 ]
 
+# --- ۳. لیست پشتیبان (کتاب‌ها و پژوهش‌ها) ---
 FALLBACK_NEWS = [
     {
         "id": "fb_elnino",
@@ -39,6 +40,13 @@ FALLBACK_NEWS = [
         "text": "دمای آب در تابستان به بیش از ۳۶ درجه می‌رسد و مرجان‌ها در آستانه تنش حرارتی شدید هستند.",
         "link": "https://7sobh.com/",
         "source": "هفت صبح"
+    },
+    {
+        "id": "fb_book",
+        "title": "کتاب: Climate Dynamics (ویرایش دوم)",
+        "text": "نویسنده: Kerry H. Cook | ناشر: Princeton University Press | سال: ۲۰۲۵ | این کتاب مبانی فیزیکی سیستم اقلیمی و گردش عمومی جو را پوشش می‌دهد.",
+        "link": "https://press.princeton.edu/books/hardcover/9780691262352/climate-dynamics",
+        "source": "Princeton University Press"
     }
 ]
 
@@ -108,18 +116,9 @@ def fetch_rss_news(source_url, source_name):
 
 async def main():
     print("=" * 60)
-    print("گزارش اخبار - " + now_jalali())
+    print("گزارش اخبار اقلیم و دریا - " + now_jalali())
     print("=" * 60)
-
-    # --- قفل زمانی: فقط در ساعت 11 صبح و 11 شب (با 5 دقیقه ارفاق) اجرا شود ---
-    now = datetime.now()
-    is_11_am = (now.hour == 11 and now.minute <= 5)
-    is_11_pm = (now.hour == 23 and now.minute <= 5)
     
-    if not (is_11_am or is_11_pm):
-        print(f"زمان فعلی ({now.strftime('%H:%M')}) خارج از بازه ارسال است. هیچ پیامی ارسال نمی‌شود.")
-        return
-
     urgent_news = []
     for source in URGENT_SOURCES:
         print(f"Checking urgent source: {source['name']}...")
@@ -145,7 +144,7 @@ async def main():
             msg += f"   📌 منبع: {news['source']}\n\n"
         msg += "━━━━━━━━━━━━━━━\n"
         print("Sending urgent news...")
-        await _send_to_all_async(msg, message_id=f"urgent_{now.strftime('%Y-%m-%d_%H')}")
+        await _send_to_all_async(msg, message_id=f"urgent_{urgent_news[0]['link']}")
 
     if journal_news:
         msg = "📚 **مقالات علمی معتبر (دریا و اقلیم)** 📚\n\n"
@@ -157,10 +156,10 @@ async def main():
             msg += f"   📌 منبع: {news['source']}\n\n"
         msg += "━━━━━━━━━━━━━━━\n"
         print("Sending journal news...")
-        await _send_to_all_async(msg, message_id=f"journal_{now.strftime('%Y-%m-%d_%H')}")
+        await _send_to_all_async(msg, message_id=f"journal_{journal_news[0]['link']}")
 
     if not urgent_news and not journal_news and fallback_news:
-        msg = "📌 **اطلاعات آرشیوی (دریایی و اقلیمی)** 📌\n\n"
+        msg = "📌 **اطلاعات آرشیوی (کتاب‌ها و پژوهش‌ها)** 📌\n\n"
         msg += "📅 " + now_jalali() + "\n━━━━━━━━━━━━━━━\n\n"
         for news in fallback_news:
             msg += f"🔹 \u202B**{news['title']}**\u202C\n"
@@ -169,7 +168,7 @@ async def main():
             msg += f"   📌 منبع: {news['source']}\n\n"
         msg += "━━━━━━━━━━━━━━━\n"
         print("Sending fallback news...")
-        await _send_to_all_async(msg, message_id=f"fallback_{now.strftime('%Y-%m-%d_%H')}")
+        await _send_to_all_async(msg, message_id=f"fallback_{fallback_news[0]['id']}")
 
     print("Done.")
 
