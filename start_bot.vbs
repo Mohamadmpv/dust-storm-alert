@@ -1,1 +1,0 @@
-CreateObject("WScript.Shell").Run "cmd /c cd /d C:\dust-storm-alert && ""C:\Users\pourvahid\AppData\Local\Programs\Python\Python314\pythonw.exe"" bale_bot_listener.py", 0, False

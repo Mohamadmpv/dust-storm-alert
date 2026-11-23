@@ -7,17 +7,16 @@ import xml.etree.ElementTree as ET
 import re
 from jalali import now_jalali
 from notifier import _send_to_all_async
+from config import GIST_ID, GH_PAT
 
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding='utf-8')
 
-# --- ۱. منابع هشدار فوری (کامل) ---
 URGENT_SOURCES = [
     {"name": "NOAA ENSO Advisory", "url": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/ensodisc.txt", "link": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/"},
     {"name": "WMO El Niño Update", "url": "https://wmo.int/", "link": "https://wmo.int/"},
 ]
 
-# --- ۲. منابع علمی (کامل) ---
 JOURNAL_SOURCES = [
     {"name": "JGR: Oceans", "url": "https://agupubs.onlinelibrary.wiley.com/feed/21699291/most-recent"},
     {"name": "Nature Climate Change", "url": "https://www.nature.com/nclimate.rss"},
@@ -25,53 +24,35 @@ JOURNAL_SOURCES = [
     {"name": "ScienceDaily Ocean", "url": "https://www.sciencedaily.com/rss/earth_climate/oceanography.xml"} 
 ]
 
-# --- ۳. لیست پشتیبان (کامل و بدون کم شدن حتی یک مورد) ---
 FALLBACK_NEWS = [
-    {
-        "id": "fb_elnino",
-        "title": "🔴 هشدار فوری: ال نینو در حال تشدید است",
-        "text": "مرکز پیش‌بینی اقلیم آمریکا (NOAA) اعلام کرد: ال نینو در حال تقویت است و احتمال یک رویداد «تاریخی» بین ۸۳ تا ۷۰ درصد است.",
-        "link": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/",
-        "source": "NOAA"
-    },
-    {
-        "id": "fb_coral",
-        "title": "وضعیت مرجان‌های خلیج فارس",
-        "text": "دمای آب در تابستان به بیش از ۳۶ درجه می‌رسد و مرجان‌ها در آستانه تنش حرارتی شدید هستند.",
-        "link": "https://7sobh.com/",
-        "source": "هفت صبح"
-    },
-    {
-        "id": "fb_book",
-        "title": "کتاب: Climate Dynamics (ویرایش دوم)",
-        "text": "نویسنده: Kerry H. Cook | ناشر: Princeton University Press | سال: ۲۰۲۵ | این کتاب مبانی فیزیکی سیستم اقلیمی و گردش عمومی جو را پوشش می‌دهد.",
-        "link": "https://press.princeton.edu/books/hardcover/9780691262352/climate-dynamics",
-        "source": "Princeton University Press"
-    }
+    {"id": "fb_elnino", "title": "🔴 هشدار فوری: ال نینو در حال تشدید است", "text": "مرکز پیش‌بینی اقلیم آمریکا (NOAA) اعلام کرد: ال نینو در حال تقویت است و احتمال یک رویداد «تاریخی» بین ۸۳ تا ۷۰ درصد است.", "link": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/", "source": "NOAA"},
+    {"id": "fb_coral", "title": "وضعیت مرجان‌های خلیج فارس", "text": "دمای آب در تابستان به بیش از ۳۶ درجه می‌رسد و مرجان‌ها در آستانه تنش حرارتی شدید هستند.", "link": "https://7sobh.com/", "source": "هفت صبح"},
+    {"id": "fb_book", "title": "کتاب: Climate Dynamics (ویرایش دوم)", "text": "نویسنده: Kerry H. Cook | ناشر: Princeton University Press | سال: ۲۰۲۵ | این کتاب مبانی فیزیکی سیستم اقلیمی و گردش عمومی جو را پوشش می‌دهد.", "link": "https://press.princeton.edu/books/hardcover/9780691262352/climate-dynamics", "source": "Princeton University Press"}
 ]
 
-SENT_NEWS_FILE = "sent_news.json"
-
-def load_sent_news():
-    """بارگذاری تاریخچه اخبار از فایل لوکال"""
-    if os.path.exists(SENT_NEWS_FILE):
-        try:
-            with open(SENT_NEWS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except:
-            return {}
-    return {}
-
-def save_sent_news(sent_dict):
-    """ذخیره تاریخچه در فایل لوکال (حداکثر ۲۰۰ مورد)"""
-    if len(sent_dict) > 200:
-        keys = list(sent_dict.keys())[-200:]
-        sent_dict = {k: sent_dict[k] for k in keys}
+# --- توابع Gist برای حافظه مشترک ---
+def get_gist_data(filename):
     try:
-        with open(SENT_NEWS_FILE, "w", encoding="utf-8") as f:
-            json.dump(sent_dict, f, ensure_ascii=False)
+        url = "https://api.github.com/gists/" + str(GIST_ID)
+        headers = {"Authorization": "token " + str(GH_PAT)}
+        r = requests.get(url, headers=headers, timeout=30)
+        r.raise_for_status()
+        content = r.json()["files"].get(filename, {}).get("content", "")
+        return json.loads(content) if content else {}
     except Exception as e:
-        print("Error saving news history:", e)
+        print("Gist read error:", e)
+        return {}
+
+def save_gist_data(filename, data):
+    try:
+        url = "https://api.github.com/gists/" + str(GIST_ID)
+        headers = {"Authorization": "token " + str(GH_PAT)}
+        gist_data = {"files": {filename: {"content": json.dumps(data, ensure_ascii=False)}}}
+        requests.patch(url, headers=headers, json=gist_data, timeout=30)
+    except Exception as e:
+        print("Gist write error:", e)
+
+SENT_NEWS_FILE = "sent_news.json"
 
 def clean_text(text, max_length=150):
     if not text: return ""
@@ -92,13 +73,11 @@ def fetch_text_urgent(url, source_name):
         for line in lines:
             if any(keyword in line.lower() for keyword in ['synopsis:', 'el niño', 'el nino', 'chance', 'probability']):
                 important_lines.append(line.strip())
-        
         if important_lines:
             summary = clean_text(" ".join(important_lines[:2]), 150)
             return [{"title": f"🔴 {source_name}: به‌روزرسانی فوری", "description": summary, "link": url, "source": source_name}]
         return []
     except Exception as e:
-        print(f"Error fetching {source_name}: {e}")
         return []
 
 def fetch_rss_news(source_url, source_name):
@@ -122,7 +101,6 @@ def fetch_rss_news(source_url, source_name):
                 news_list.append({"title": clean_text(title.text, 100), "link": final_link, "description": desc_text, "source": source_name})
         return news_list
     except Exception as e:
-        print(f"Error fetching {source_name}: {e}")
         return []
 
 async def main():
@@ -130,7 +108,8 @@ async def main():
     print("گزارش اخبار اقلیم و دریا - " + now_jalali())
     print("=" * 60)
     
-    sent_news = load_sent_news()
+    # خواندن حافظه مشترک از Gist
+    sent_news = get_gist_data(SENT_NEWS_FILE)
     
     urgent_news = []
     for source in URGENT_SOURCES:
@@ -160,7 +139,7 @@ async def main():
             sent_news[news['link']] = "sent"
         msg += "━━━━━━━━━━━━━━━\n"
         await _send_to_all_async(msg)
-        save_sent_news(sent_news)
+        save_gist_data(SENT_NEWS_FILE, sent_news)
 
     if new_journal:
         msg = "📚 **مقالات علمی معتبر (دریا و اقلیم)** 📚\n\n📅 " + now_jalali() + "\n━━━━━━━━━━━━━━━\n\n"
@@ -169,7 +148,7 @@ async def main():
             sent_news[news['link']] = "sent"
         msg += "━━━━━━━━━━━━━━━\n"
         await _send_to_all_async(msg)
-        save_sent_news(sent_news)
+        save_gist_data(SENT_NEWS_FILE, sent_news)
 
     if not new_urgent and not new_journal and fallback_news:
         msg = "📌 **اطلاعات آرشیوی (کتاب‌ها و پژوهش‌ها)** 📌\n\n📅 " + now_jalali() + "\n━━━━━━━━━━━━━━━\n\n"
@@ -177,7 +156,7 @@ async def main():
             msg += f"🔹 \u202B**{news['title']}**\u202C\n   \u202B{news['text']}\u202C\n   🔗 {news['link']}\n   📌 منبع: {news['source']}\n\n"
         msg += "━━━━━━━━━━━━━━━\n"
         await _send_to_all_async(msg)
-        save_sent_news(sent_news)
+        save_gist_data(SENT_NEWS_FILE, sent_news)
 
     print("Done.")
 

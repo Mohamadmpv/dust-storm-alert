@@ -26,9 +26,9 @@ async def _send_to_all_async(msg, message_id=None):
     send_status = get_gist_data("send_status.json")
     
     if message_id is None:
-        await _send_to_bale(msg)
-        await _send_to_telegram(msg)
-        return
+        # اگر آیدی نداشت، برای جلوگیری از ارسال تکراری، یک آیدی بر اساس هش متن بسازیم
+        import hashlib
+        message_id = hashlib.md5(msg.encode('utf-8')).hexdigest()
 
     status = send_status.get(str(message_id), {"bale": False, "telegram": False})
     
