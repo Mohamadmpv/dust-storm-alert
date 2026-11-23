@@ -124,41 +124,43 @@ async def main():
     @dp.callback_query()
     async def on_callback(callback: CallbackQuery):
         data = callback.data
-        try: pass # <--- حذف callback.answer() برای جلوگیری از دوبار ارسال
-        except: pass
-
+        
         try:
+            # --- تغییرات اصلی اینجاست: استفاده از edit_text به جای answer ---
             if data == "menu_main":
-                await callback.message.answer("منوی اصلی:", reply_markup=get_main_menu())
+                await callback.message.edit_text("منوی اصلی:", reply_markup=get_main_menu())
 
             elif data == "menu_search_paper":
-                await callback.message.answer("📚 موضوع مورد نظر را انتخاب کنید:", reply_markup=get_keyword_menu())
+                await callback.message.edit_text("📚 موضوع مورد نظر را انتخاب کنید:", reply_markup=get_keyword_menu())
+            
             elif data.startswith("kw_") and not data.startswith("kwmore_"):
                 kw = data.replace("kw_", "")
-                await callback.message.answer(f"⏳ جستجو برای «{kw}»...")
+                await callback.message.edit_text(f"⏳ جستجو برای «{kw}»...")
                 res = search_openalex(kw, 2020, 1)
                 if res:
                     msg = f"📚 **نتایج «{kw}» (صفحه ۱):**\n\n"
                     for i, r in enumerate(res, 1):
                         msg += f"{i}. **{r['title']}**\n   👤 {r['author']} | 📅 {r['year']}\n   🔗 [لینک]({r['link']})\n\n"
                     kb = [[InlineKeyboardButton(text="📄 بیشتر", callback_data=f"kwmore_{kw}_2")], [InlineKeyboardButton(text="🔙 بازگشت", callback_data="menu_search_paper")]]
-                    await callback.message.answer(msg, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
+                    await callback.message.edit_text(msg, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
+            
             elif data.startswith("kwmore_"):
                 parts = data.replace("kwmore_", "").split("_")
                 kw, page = parts[0], int(parts[1])
+                await callback.message.edit_text(f"⏳ جستجو برای «{kw}» (صفحه {page})...")
                 res = search_openalex(kw, 2020, page)
                 if res:
                     msg = f"📚 **نتایج «{kw}» (صفحه {page}):**\n\n"
                     for i, r in enumerate(res, 1):
                         msg += f"{i}. **{r['title']}**\n   👤 {r['author']} | 📅 {r['year']}\n   🔗 [لینک]({r['link']})\n\n"
                     kb = [[InlineKeyboardButton(text="📄 بیشتر", callback_data=f"kwmore_{kw}_{page+1}")], [InlineKeyboardButton(text="🔙 بازگشت", callback_data="menu_search_paper")]]
-                    await callback.message.answer(msg, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
+                    await callback.message.edit_text(msg, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb))
 
             elif data == "menu_cyclone":
-                await callback.message.answer("🌀 **طوفان‌های حاره‌ای:**\n\nدر حال حاضر طوفان فعالی در خلیج فارس و دریای عمان گزارش نشده است.\n🔗 https://www.rsmcnewdelhi.imd.gov.in/", reply_markup=get_main_menu())
+                await callback.message.edit_text("🌀 **طوفان‌های حاره‌ای:**\n\nدر حال حاضر طوفان فعالی در خلیج فارس و دریای عمان گزارش نشده است.\n🔗 https://www.rsmcnewdelhi.imd.gov.in/", reply_markup=get_main_menu())
 
             elif data == "menu_storm_cities":
-                await callback.message.answer("📍 شهر را انتخاب کنید:", reply_markup=get_city_menu("storm"))
+                await callback.message.edit_text("📍 شهر را انتخاب کنید:", reply_markup=get_city_menu("storm"))
             elif data.startswith("storm_"):
                 city = data.replace("storm_", "")
                 res = get_full_weather(*CITIES[city])
@@ -170,10 +172,10 @@ async def main():
                     elif wind_val > 20: analysis = "🌬️ **نسیم:** باد ملایم است."
                     else: analysis = "✅ **آرام:** هوا آرام است."
                     msg = f"🚨 **وضعیت طوفان {city}:**\n\n💨 سرعت باد: {wind_val} km/h\n\n📌 **تحلیل:** {analysis}"
-                    await callback.message.answer(msg, reply_markup=get_main_menu())
+                    await callback.message.edit_text(msg, reply_markup=get_main_menu())
 
             elif data == "menu_dust_cities":
-                await callback.message.answer("📍 شهر را انتخاب کنید:", reply_markup=get_city_menu("dust"))
+                await callback.message.edit_text("📍 شهر را انتخاب کنید:", reply_markup=get_city_menu("dust"))
             elif data.startswith("dust_"):
                 city = data.replace("dust_", "")
                 res = get_dust_data(*CITIES[city])
@@ -184,10 +186,10 @@ async def main():
                     elif dust is not None and dust > 20: analysis = "🟡 **متوسط:** گرد و خاک ملایم وجود دارد."
                     else: analysis = "🟢 **پاک:** هوا تمیز است."
                     msg = f"🌫️ **گرد و خاک {city}:**\n\n🌪️ Dust: {round(dust, 1) if dust is not None else 'نامشخص'} μg/m³\n💨 PM10: {round(pm10, 1) if pm10 is not None else 'نامشخص'} μg/m³\n\n📌 **تحلیل:** {analysis}"
-                    await callback.message.answer(msg, reply_markup=get_main_menu())
+                    await callback.message.edit_text(msg, reply_markup=get_main_menu())
 
             elif data == "menu_air_cities":
-                await callback.message.answer("📍 شهر را انتخاب کنید:", reply_markup=get_city_menu("air"))
+                await callback.message.edit_text("📍 شهر را انتخاب کنید:", reply_markup=get_city_menu("air"))
             elif data.startswith("air_"):
                 city = data.replace("air_", "")
                 res = get_air_quality(*CITIES[city])
@@ -204,10 +206,10 @@ async def main():
                     msg = f"🏭 **آلودگی هوای {city}:**\n\n🔹 PM2.5: {round(pm25, 1) if pm25 is not None else 'نامشخص'} μg/m³\n🔹 NO₂: {round(no2, 1) if no2 is not None else 'نامشخص'} μg/m³\n"
                     if ozone is not None: msg += f"🔹 ازن (O₃): {round(ozone, 1)} μg/m³\n"
                     msg += f"\n📊 **وضعیت:** {status}\n📌 **توصیه:** {advice}"
-                    await callback.message.answer(msg, reply_markup=get_main_menu())
+                    await callback.message.edit_text(msg, reply_markup=get_main_menu())
 
             elif data == "menu_weather":
-                await callback.message.answer("📍 شهر را انتخاب کنید:", reply_markup=get_city_menu("w"))
+                await callback.message.edit_text("📍 شهر را انتخاب کنید:", reply_markup=get_city_menu("w"))
             elif data.startswith("w_"):
                 city = data.replace("w_", "")
                 res = get_full_weather(*CITIES[city])
@@ -221,10 +223,10 @@ async def main():
                     elif rain < 15: analysis = "🌧️ **بارش متوسط:** باران قابل توجهی می‌بارد."
                     else: analysis = "⛈️ **بارش شدید:** احتمال سیل و آب‌گرفتگی."
                     msg = f"🌤️ **آب‌وهوای {city} (فردا):**\n\n🌡️ دما: {tmin}° تا {tmax}°\n🌧️ بارش: {rain} mm\n\n📌 **تحلیل:** {analysis}"
-                    await callback.message.answer(msg, reply_markup=get_main_menu())
+                    await callback.message.edit_text(msg, reply_markup=get_main_menu())
 
             elif data == "menu_rain":
-                await callback.message.answer("📍 شهر را انتخاب کنید:", reply_markup=get_city_menu("rain"))
+                await callback.message.edit_text("📍 شهر را انتخاب کنید:", reply_markup=get_city_menu("rain"))
             elif data.startswith("rain_"):
                 city = data.replace("rain_", "")
                 res = get_full_weather(*CITIES[city])
@@ -237,7 +239,7 @@ async def main():
                     elif snow > 0: analysis = "❄️ **برفی:** لباس گرم و زنجیر چرخ لازم است."
                     else: analysis = "🌧️ **بارانی:** لباس ضدآب همراه داشته باشید."
                     msg = f"🌧️ **میزان بارش {city} (فردا):**\n\n☔ باران: {round(rain, 1)} mm\n❄️ برف: {round(snow, 1)} cm\n\n📌 **تحلیل:** {analysis}"
-                    await callback.message.answer(msg, reply_markup=get_main_menu())
+                    await callback.message.edit_text(msg, reply_markup=get_main_menu())
 
             elif data == "sea_gulf":
                 res = get_marine_data(27.0, 51.0)
@@ -249,7 +251,7 @@ async def main():
                     elif wave_val >= 1.5: analysis = "⚠️ **متلاطم:** شناگران احتیاط کنند."
                     else: analysis = "🌊 **آرام:** برای تفریحات آبی مناسب است."
                     msg = f"🌊 **خلیج فارس:**\n\n📏 موج: {wave_val} متر\n🌡️ دمای آب: {round(sst, 1) if sst else 'نامشخص'} °C\n\n📌 {analysis}"
-                    await callback.message.answer(msg, reply_markup=get_main_menu())
+                    await callback.message.edit_text(msg, reply_markup=get_main_menu())
 
             elif data == "sea_oman":
                 res = get_marine_data(25.0, 58.0)
@@ -261,12 +263,12 @@ async def main():
                     elif wave_val >= 1.5: analysis = "⚠️ **متلاطم:** احتیاط کنید."
                     else: analysis = "🌊 **آرام:** دریا آرام است."
                     msg = f"🌊 **دریای عمان:**\n\n📏 موج: {wave_val} متر\n🌡️ دمای آب: {round(sst, 1) if sst else 'نامشخص'} °C\n\n📌 {analysis}"
-                    await callback.message.answer(msg, reply_markup=get_main_menu())
+                    await callback.message.edit_text(msg, reply_markup=get_main_menu())
 
         except Exception as e:
             print(f"Error: {e}")
-            try: await callback.message.answer("❌ خطایی رخ داد. لطفاً دوباره تلاش کنید.", reply_markup=get_main_menu())
-            except: pass
+            # در صورت خطا (مثلا وقتی متن پیام تغییری نکرده باشد) پیام خطا نده
+            pass 
 
     await dp.start_polling(bot)
 
