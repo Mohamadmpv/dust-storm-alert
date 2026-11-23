@@ -6,7 +6,7 @@ import asyncio
 import xml.etree.ElementTree as ET
 import re
 from jalali import now_jalali
-from notifier import _send_to_all_async
+from notifier import _send_to_all_async, get_gist_data, save_gist_data
 from config import GIST_ID, GH_PAT
 
 if sys.platform == "win32":
@@ -18,14 +18,15 @@ URGENT_SOURCES = [
     {"name": "WMO El Niño Update", "url": "https://wmo.int/", "link": "https://wmo.int/"},
 ]
 
-# --- ۲. منابع علمی (بدون ScienceDaily که خبر تکراری می‌داد) ---
+# --- ۲. منابع علمی ---
 JOURNAL_SOURCES = [
     {"name": "JGR: Oceans", "url": "https://agupubs.onlinelibrary.wiley.com/feed/21699291/most-recent"},
     {"name": "Nature Climate Change", "url": "https://www.nature.com/nclimate.rss"},
     {"name": "Marine Pollution Bulletin", "url": "https://rss.sciencedirect.com/publication/science/0025326X"},
+    {"name": "ScienceDaily Ocean", "url": "https://www.sciencedaily.com/rss/earth_climate/oceanography.xml"} 
 ]
 
-# --- ۳. لیست پشتیبان (کتاب‌ها و پژوهش‌ها) ---
+# --- ۳. لیست پشتیبان ---
 FALLBACK_NEWS = [
     {
         "id": "fb_elnino",
@@ -49,6 +50,19 @@ FALLBACK_NEWS = [
         "source": "Princeton University Press"
     }
 ]
+
+SENT_NEWS_FILE = "sent_news.json"  # نام فایل حافظه در Gist
+
+def load_sent_news():
+    """بارگذاری تاریخچه اخبار ارسال‌شده از Gist"""
+    return get_gist_data(SENT_NEWS_FILE)
+
+def save_sent_news(sent_dict):
+    """ذخیره تاریخچه اخبار در Gist (حداکثر ۲۰۰ مورد آخر)"""
+    if len(sent_dict) > 200:
+        keys = list(sent_dict.keys())[-200:]
+        sent_dict = {k: sent_dict[k] for k in keys}
+    save_gist_data(SENT_NEWS_FILE, sent_dict)
 
 def clean_text(text, max_length=150):
     if not text: return ""
@@ -86,7 +100,8 @@ def fetch_rss_news(source_url, source_name):
         root = ET.fromstring(r.content)
         items = root.findall('.//item')
         news_list = []
-        for item in items[:1]:
+        # فقط ۲ خبر آخر هر منبع را می‌خوانیم تا سرعت بالا باشد
+        for item in items[:2]: 
             title = item.find('title')
             guid = item.find('guid')
             link = item.find('link')
@@ -119,6 +134,9 @@ async def main():
     print("گزارش اخبار اقلیم و دریا - " + now_jalali())
     print("=" * 60)
     
+    # ۱. بارگذاری تاریخچه اخبار ارسال‌شده
+    sent_news = load_sent_news()
+    
     urgent_news = []
     for source in URGENT_SOURCES:
         print(f"Checking urgent source: {source['name']}...")
@@ -129,36 +147,51 @@ async def main():
         print(f"Fetching journal: {source['name']}...")
         journal_news.extend(fetch_rss_news(source["url"], source["name"]))
     
-    fallback_news = []
-    if not urgent_news and not journal_news:
-        print("No online news. Using fallback.")
-        fallback_news = FALLBACK_NEWS
+    # ۲. فیلتر کردن اخبار تکراری (بر اساس لینک)
+    def is_new(news):
+        key = news.get("link") or news.get("title")
+        return key not in sent_news
 
-    if urgent_news:
+    new_urgent = [n for n in urgent_news if is_new(n)]
+    new_journal = [n for n in journal_news if is_new(n)]
+    
+    fallback_news = []
+    if not new_urgent and not new_journal:
+        print("No new online news. Using fallback.")
+        fallback_news = [n for n in FALLBACK_NEWS if n["id"] not in sent_news]
+        for n in fallback_news:
+            sent_news[n["id"]] = "sent"
+
+    # ۳. ارسال اخبار جدید (بدون message_id تا دوباره برای همه ارسال نشود)
+    if new_urgent:
         msg = "🔴 **هشدارهای فوری اقلیمی** 🔴\n\n"
         msg += "📅 " + now_jalali() + "\n━━━━━━━━━━━━━━━\n\n"
-        for news in urgent_news:
+        for news in new_urgent:
             msg += f"\u200E🔹 \u202B**{news['title']}**\u202C\n"
             msg += f"   \u200E{news['description']}\n"
             msg += f"   🔗 [لینک منبع]({news['link']})\n"
             msg += f"   📌 منبع: {news['source']}\n\n"
+            sent_news[news['link']] = "sent" # ذخیره در تاریخچه
         msg += "━━━━━━━━━━━━━━━\n"
         print("Sending urgent news...")
-        await _send_to_all_async(msg, message_id=f"urgent_{urgent_news[0]['link']}")
+        await _send_to_all_async(msg)
+        save_sent_news(sent_news)
 
-    if journal_news:
+    if new_journal:
         msg = "📚 **مقالات علمی معتبر (دریا و اقلیم)** 📚\n\n"
         msg += "📅 " + now_jalali() + "\n━━━━━━━━━━━━━━━\n\n"
-        for news in journal_news:
+        for news in new_journal:
             msg += f"\u200E🔹 **{news['title']}**\n"
             msg += f"   \u200E{news['description']}\n"
             msg += f"   🔗 [مشاهده اصل مقاله]({news['link']})\n"
             msg += f"   📌 منبع: {news['source']}\n\n"
+            sent_news[news['link']] = "sent" # ذخیره در تاریخچه
         msg += "━━━━━━━━━━━━━━━\n"
         print("Sending journal news...")
-        await _send_to_all_async(msg, message_id=f"journal_{journal_news[0]['link']}")
+        await _send_to_all_async(msg)
+        save_sent_news(sent_news)
 
-    if not urgent_news and not journal_news and fallback_news:
+    if not new_urgent and not new_journal and fallback_news:
         msg = "📌 **اطلاعات آرشیوی (کتاب‌ها و پژوهش‌ها)** 📌\n\n"
         msg += "📅 " + now_jalali() + "\n━━━━━━━━━━━━━━━\n\n"
         for news in fallback_news:
@@ -168,7 +201,8 @@ async def main():
             msg += f"   📌 منبع: {news['source']}\n\n"
         msg += "━━━━━━━━━━━━━━━\n"
         print("Sending fallback news...")
-        await _send_to_all_async(msg, message_id=f"fallback_{fallback_news[0]['id']}")
+        await _send_to_all_async(msg)
+        save_sent_news(sent_news)
 
     print("Done.")
 
