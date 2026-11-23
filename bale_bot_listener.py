@@ -124,7 +124,7 @@ async def main():
     @dp.callback_query()
     async def on_callback(callback: CallbackQuery):
         data = callback.data
-        try: await callback.answer()
+        try: pass # <--- حذف callback.answer() برای جلوگیری از دوبار ارسال
         except: pass
 
         try:
