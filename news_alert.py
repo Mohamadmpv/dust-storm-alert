@@ -5,7 +5,7 @@ import requests
 import asyncio
 import xml.etree.ElementTree as ET
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
 from jalali import now_jalali
 from notifier import _send_to_all_async
 from config import GIST_ID, GH_PAT
@@ -13,13 +13,12 @@ from config import GIST_ID, GH_PAT
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding='utf-8')
 
-# --- ۱. منابع هشدار فوری ---
+# --- منابع خبری (دقیقاً همان‌هایی که خودتان داشتید) ---
 URGENT_SOURCES = [
     {"name": "NOAA ENSO Advisory", "url": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/ensodisc.txt", "link": "https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/"},
     {"name": "WMO El Niño Update", "url": "https://wmo.int/", "link": "https://wmo.int/"},
 ]
 
-# --- ۲. منابع علمی ---
 JOURNAL_SOURCES = [
     {"name": "JGR: Oceans", "url": "https://agupubs.onlinelibrary.wiley.com/feed/21699291/most-recent"},
     {"name": "Nature Climate Change", "url": "https://www.nature.com/nclimate.rss"},
@@ -107,33 +106,19 @@ def fetch_rss_news(source_url, source_name):
         print(f"Error fetching {source_name}: {e}")
         return []
 
-# --- حافظه Gist برای جلوگیری از ارسال تکراری ---
-def get_gist_memory():
-    try:
-        url = "https://api.github.com/gists/" + str(GIST_ID)
-        headers = {"Authorization": "token " + str(GH_PAT)}
-        r = requests.get(url, headers=headers, timeout=30)
-        r.raise_for_status()
-        content = r.json()["files"].get("sent_news_memory.json", {}).get("content", "[]")
-        return json.loads(content) if content else []
-    except:
-        return []
-
-def save_gist_memory(data):
-    try:
-        url = "https://api.github.com/gists/" + str(GIST_ID)
-        headers = {"Authorization": "token " + str(GH_PAT)}
-        gist_data = {"files": {"sent_news_memory.json": {"content": json.dumps(data)}}}
-        requests.patch(url, headers=headers, json=gist_data, timeout=30)
-    except:
-        pass
-
 async def main():
     print("=" * 60)
     print("گزارش اخبار - " + now_jalali())
     print("=" * 60)
 
-    memory = get_gist_memory() # حافظه شامل لینک‌های ارسال شده
+    # --- قفل زمانی: فقط در ساعت 11 صبح و 11 شب (با 5 دقیقه ارفاق) اجرا شود ---
+    now = datetime.now()
+    is_11_am = (now.hour == 11 and now.minute <= 5)
+    is_11_pm = (now.hour == 23 and now.minute <= 5)
+    
+    if not (is_11_am or is_11_pm):
+        print(f"زمان فعلی ({now.strftime('%H:%M')}) خارج از بازه ارسال است. هیچ پیامی ارسال نمی‌شود.")
+        return
 
     urgent_news = []
     for source in URGENT_SOURCES:
@@ -160,7 +145,7 @@ async def main():
             msg += f"   📌 منبع: {news['source']}\n\n"
         msg += "━━━━━━━━━━━━━━━\n"
         print("Sending urgent news...")
-        await _send_to_all_async(msg, message_id=f"urgent_{urgent_news[0]['link']}")
+        await _send_to_all_async(msg, message_id=f"urgent_{now.strftime('%Y-%m-%d_%H')}")
 
     if journal_news:
         msg = "📚 **مقالات علمی معتبر (دریا و اقلیم)** 📚\n\n"
@@ -172,7 +157,7 @@ async def main():
             msg += f"   📌 منبع: {news['source']}\n\n"
         msg += "━━━━━━━━━━━━━━━\n"
         print("Sending journal news...")
-        await _send_to_all_async(msg, message_id=f"journal_{journal_news[0]['link']}")
+        await _send_to_all_async(msg, message_id=f"journal_{now.strftime('%Y-%m-%d_%H')}")
 
     if not urgent_news and not journal_news and fallback_news:
         msg = "📌 **اطلاعات آرشیوی (دریایی و اقلیمی)** 📌\n\n"
@@ -184,10 +169,8 @@ async def main():
             msg += f"   📌 منبع: {news['source']}\n\n"
         msg += "━━━━━━━━━━━━━━━\n"
         print("Sending fallback news...")
-        await _send_to_all_async(msg, message_id=f"fallback_{fallback_news[0]['id']}")
+        await _send_to_all_async(msg, message_id=f"fallback_{now.strftime('%Y-%m-%d_%H')}")
 
-    # ذخیره وضعیت در Gist (برای اینکه نه کامپیوتر و نه گیت‌هاب دوباره نفرستند)
-    # این بخش توسط notifier.py مدیریت می‌شود و نیازی به تغییر ندارد.
     print("Done.")
 
 if __name__ == "__main__":
