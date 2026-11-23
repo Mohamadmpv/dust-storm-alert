@@ -126,7 +126,6 @@ async def main():
         data = callback.data
         
         try:
-            # --- تغییرات اصلی اینجاست: استفاده از edit_text به جای answer ---
             if data == "menu_main":
                 await callback.message.edit_text("منوی اصلی:", reply_markup=get_main_menu())
 
@@ -266,9 +265,11 @@ async def main():
                     await callback.message.edit_text(msg, reply_markup=get_main_menu())
 
         except Exception as e:
-            print(f"Error: {e}")
-            # در صورت خطا (مثلا وقتی متن پیام تغییری نکرده باشد) پیام خطا نده
-            pass 
+            # اگر خطا مربوط به ویرایش پیام تکراری بود، نادیده بگیر
+            if "message is not modified" in str(e).lower() or "bad request" in str(e).lower():
+                pass
+            else:
+                print(f"Error: {e}")
 
     await dp.start_polling(bot)
 
