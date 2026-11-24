@@ -3,6 +3,7 @@ import logging
 import sys
 import os
 import requests
+from marine_api import get_copernicus_sst, get_copernicus_chlorophyll
 from baleio import Bot, Dispatcher, md, types
 from baleio.client.default import DefaultBotProperties
 from baleio.enums import ParseMode
