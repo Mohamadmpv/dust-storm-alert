@@ -22,7 +22,7 @@ def get_copernicus_sst(lat, lon):
             minimum_latitude=lat - 0.1, maximum_latitude=lat + 0.1,
             start_datetime=start_time.strftime("%Y-%m-%dT%H:%M:%S"),
             end_datetime=end_time.strftime("%Y-%m-%dT%H:%M:%S"),
-            minimum_depth=0, maximum_depth=1,
+            minimum_depth=0.5, maximum_depth=1.5, # اصلاح عمق برای همخوانی با دیتاست
             username=COPERNICUS_USER, password=COPERNICUS_PASS
         )
         sst = float(ds["thetao"].mean())
@@ -32,11 +32,12 @@ def get_copernicus_sst(lat, lon):
         return None
 
 def get_copernicus_chlorophyll(lat, lon):
-    """دریافت کلروفیل-a از Copernicus"""
+    """دریافت کلروفیل-a از Copernicus (با دیتاست معتبر)"""
     try:
         end_time = datetime.utcnow()
         start_time = end_time - timedelta(days=1)
         
+        # تغییر دیتاست به یک دیتاست معتبر برای کلروفیل
         ds = copernicusmarine.open_dataset(
             dataset_id="cmems_mod_glo_bgc_anfc_0.25deg_P1D-m", 
             variables=["chl"],
@@ -44,7 +45,7 @@ def get_copernicus_chlorophyll(lat, lon):
             minimum_latitude=lat - 0.5, maximum_latitude=lat + 0.5,
             start_datetime=start_time.strftime("%Y-%m-%dT%H:%M:%S"),
             end_datetime=end_time.strftime("%Y-%m-%dT%H:%M:%S"),
-            minimum_depth=0, maximum_depth=1,
+            minimum_depth=0.5, maximum_depth=1.5, # اصلاح عمق
             username=COPERNICUS_USER, password=COPERNICUS_PASS
         )
         chl = float(ds["chl"].mean())
@@ -65,23 +66,29 @@ def get_marine_data(lat, lon):
     except: return None
 
 def degree_to_direction(degree):
-    """تبدیل درجه به جهت جغرافیایی"""
-    if degree is None:
-        return "نامشخص"
-    if 337.5 <= degree or degree < 22.5:
-        return "شمال"
-    elif 22.5 <= degree < 67.5:
-        return "شمال‌شرق"
-    elif 67.5 <= degree < 112.5:
-        return "شرق"
-    elif 112.5 <= degree < 157.5:
-        return "جنوب‌شرق"
-    elif 157.5 <= degree < 202.5:
-        return "جنوب"
-    elif 202.5 <= degree < 247.5:
-        return "جنوب‌غرب"
-    elif 247.5 <= degree < 292.5:
-        return "غرب"
-    elif 292.5 <= degree < 337.5:
-        return "شمال‌غرب"
+    if degree is None: return "نامشخص"
+    if 337.5 <= degree or degree < 22.5: return "شمال"
+    elif 22.5 <= degree < 67.5: return "شمال‌شرق"
+    elif 67.5 <= degree < 112.5: return "شرق"
+    elif 112.5 <= degree < 157.5: return "جنوب‌شرق"
+    elif 157.5 <= degree < 202.5: return "جنوب"
+    elif 202.5 <= degree < 247.5: return "جنوب‌غرب"
+    elif 247.5 <= degree < 292.5: return "غرب"
+    elif 292.5 <= degree < 337.5: return "شمال‌غرب"
     return "نامشخص"
+
+def get_wind_analysis(city_name, degree):
+    direction = degree_to_direction(degree)
+    if city_name in ["زابل (سیستان)", "زاهدان", "مکران"]:
+        if direction in ["شمال", "شمال‌غرب", "غرب"]: return f"از سمت {direction} (منشأ: کویرهای مرکزی ایران)"
+        elif direction in ["جنوب", "جنوب‌شرق", "شرق"]: return f"از سمت {direction} (منشأ: بیابان‌های افغانستان و پاکستان)"
+    elif city_name in ["اهواز", "بوشهر", "خلیج فارس", "بندرعباس", "بندر ماهشهر", "بندر دیر", "بندر لنگه"]:
+        if direction in ["شمال", "شمال‌غرب"]: return f"از سمت {direction} (منشأ: عراق و سوریه)"
+        elif direction in ["جنوب", "جنوب‌شرق"]: return f"از سمت {direction} (منشأ: بیابان‌های عربستان)"
+        elif direction in ["غرب"]: return f"از سمت {direction} (منشأ: صحرای عربستان)"
+    elif city_name == "تهران":
+        if direction in ["غرب", "جنوب‌غرب"]: return f"از سمت {direction} (منشأ: کویر مرکزی و دشت‌های غربی)"
+    elif city_name in ["چابهار", "جاسک", "کنارک"]:
+        if direction in ["جنوب", "جنوب‌غرب"]: return f"از سمت {direction} (منشأ: دریای عمان)"
+        elif direction in ["شمال", "شمال‌شرق"]: return f"از سمت {direction} (منشأ: پاکستان)"
+    return f"از سمت {direction}"

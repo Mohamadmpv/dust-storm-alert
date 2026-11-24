@@ -3,7 +3,7 @@ import logging
 import sys
 import os
 import requests
-from marine_api import get_copernicus_sst, get_copernicus_chlorophyll, get_marine_data, degree_to_direction
+from marine_api import get_copernicus_sst, get_copernicus_chlorophyll, get_marine_data, degree_to_direction, get_wind_analysis
 from baleio import Bot, Dispatcher, md, types
 from baleio.client.default import DefaultBotProperties
 from baleio.enums import ParseMode
@@ -221,7 +221,7 @@ async def send_marine_report(callback, city_name, lat, lon):
     
     sst = get_copernicus_sst(lat, lon)
     chl = get_copernicus_chlorophyll(lat, lon)
-    marine_res = get_marine_data(lat, lon) # این تابع را از marine_api.py ایمپورت کردیم
+    marine_res = get_marine_data(lat, lon)
     
     msg = f"🌊 **{city_name}** 🌊\n\n"
     if sst: msg += f"🌡️ دمای سطح آب (Copernicus): {sst} °C\n"
@@ -229,25 +229,26 @@ async def send_marine_report(callback, city_name, lat, lon):
     
     if marine_res and "hourly" in marine_res:
         h = marine_res["hourly"]
-        # داده‌های موج
         wave_val = round(h['wave_height'][0], 2) if h['wave_height'][0] else 0
         wave_dir = h['wave_direction'][0] if h['wave_direction'][0] else 0
         wave_period = round(h['wave_period'][0], 1) if h['wave_period'][0] else 0
         current_vel = round(h['ocean_current_velocity'][0], 1) if h['ocean_current_velocity'][0] else 0
         
-        # داده‌های باد (جدید)
         wind_speed = round(h.get('wind_speed_10m', [0])[0], 1) if h.get('wind_speed_10m') else 0
         wind_dir = h.get('wind_direction_10m', [0])[0] if h.get('wind_direction_10m') else 0
         
+        # استفاده از تابع تحلیل منبع باد
+        wind_analysis = get_wind_analysis(city_name, wind_dir)
+        
         msg += f"\n📏 **موج (Open-Meteo):**\n"
         msg += f"   ارتفاع: {wave_val} متر\n"
-        msg += f"   جهت: {degree_to_direction(wave_dir)} ({wave_dir}°)\n" # استفاده از تابع تبدیل
+        msg += f"   جهت: {degree_to_direction(wave_dir)} ({wave_dir}°)\n"
         msg += f"   دوره: {wave_period} ثانیه\n"
         msg += f"   جریان: {current_vel} km/h\n"
         
-        msg += f"\n💨 **باد (Open-Meteo):**\n" # بخش باد اضافه شد
+        msg += f"\n💨 **باد (Open-Meteo):**\n"
         msg += f"   سرعت: {wind_speed} km/h\n"
-        msg += f"   جهت: {degree_to_direction(wind_dir)} ({wind_dir}°)\n"
+        msg += f"   جهت: {wind_analysis}\n" # استفاده از تحلیل منبع
         
         if wave_val >= 3: msg += "\n🚨 **طوفان دریایی:** تردد شناورهای سبک ممنوع."
         elif wave_val >= 1.5: msg += "\n⚠️ **متلاطم:** شناگران احتیاط کنند."
