@@ -6,7 +6,7 @@ import asyncio
 import xml.etree.ElementTree as ET
 import re
 from jalali import now_jalali
-from notifier import _send_to_all_async
+from notifier import _send_to_all_async, get_gist_data, save_gist_data
 from config import GIST_ID, GH_PAT
 
 if sys.platform == "win32":
@@ -30,29 +30,6 @@ FALLBACK_NEWS = [
     {"id": "fb_book", "title": "کتاب: Climate Dynamics (ویرایش دوم)", "text": "نویسنده: Kerry H. Cook | ناشر: Princeton University Press | سال: ۲۰۲۵ | این کتاب مبانی فیزیکی سیستم اقلیمی و گردش عمومی جو را پوشش می‌دهد.", "link": "https://press.princeton.edu/books/hardcover/9780691262352/climate-dynamics", "source": "Princeton University Press"}
 ]
 
-def get_gist_data(filename):
-    try:
-        url = "https://api.github.com/gists/" + str(GIST_ID)
-        headers = {"Authorization": "token " + str(GH_PAT)}
-        r = requests.get(url, headers=headers, timeout=30)
-        r.raise_for_status()
-        content = r.json()["files"].get(filename, {}).get("content", "")
-        data = json.loads(content) if content else {}
-        if not isinstance(data, dict): return {}
-        return data
-    except Exception as e:
-        print("Gist read error:", e)
-        return {}
-
-def save_gist_data(filename, data):
-    try:
-        url = "https://api.github.com/gists/" + str(GIST_ID)
-        headers = {"Authorization": "token " + str(GH_PAT)}
-        gist_data = {"files": {filename: {"content": json.dumps(data, ensure_ascii=False)}}}
-        requests.patch(url, headers=headers, json=gist_data, timeout=30)
-    except Exception as e:
-        print("Gist write error:", e)
-
 SENT_NEWS_FILE = "sent_news.json"
 
 def clean_text(text, max_length=150):
@@ -74,6 +51,7 @@ def fetch_text_urgent(url, source_name):
         for line in lines:
             if any(keyword in line.lower() for keyword in ['synopsis:', 'el niño', 'el nino', 'chance', 'probability']):
                 important_lines.append(line.strip())
+        
         if important_lines:
             summary = clean_text(" ".join(important_lines[:2]), 150)
             return [{"title": f"🔴 {source_name}: به‌روزرسانی فوری", "description": summary, "link": url, "source": source_name}]

@@ -1,50 +1,27 @@
 import os
-import copernicusmarine
+import requests
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
-import requests
 
 load_dotenv()
 
-COPERNICUS_USER = os.getenv("COPERNICUS_USER")
-COPERNICUS_PASS = os.getenv("COPERNICUS_PASS")
-
-def get_copernicus_sst(lat, lon):
-    """دریافت دمای سطح آب از Copernicus (با تلاش برای ۵ تا ۱۲ روز گذشته)"""
-    for days_back in range(5, 12):
-        try:
-            end_time = datetime.utcnow() - timedelta(days=days_back)
-            start_time = end_time - timedelta(days=1)
-            
-            ds = copernicusmarine.open_dataset(
-                dataset_id="cmems_mod_glo_phy-thetao_anfc_0.083deg_P1D-m",
-                variables=["thetao"],
-                minimum_longitude=lon - 0.1, maximum_longitude=lon + 0.1,
-                minimum_latitude=lat - 0.1, maximum_latitude=lat + 0.1,
-                start_datetime=start_time.strftime("%Y-%m-%dT%H:%M:%S"),
-                end_datetime=end_time.strftime("%Y-%m-%dT%H:%M:%S"),
-                minimum_depth=0.5, maximum_depth=1.5,
-                username=COPERNICUS_USER, password=COPERNICUS_PASS
-            )
-            if ds["thetao"].size > 0:
-                sst = float(ds["thetao"].mean())
-                return round(sst, 1)
-        except Exception as e:
-            print(f"SST attempt {days_back} failed for {lat},{lon}: {e}")
-            continue
-    return None
-
+# --- تابع دریافت داده‌های موج، دما و باد از Open-Meteo ---
 def get_marine_data(lat, lon):
-    """دریافت داده‌های موج، دما و باد از Open-Meteo"""
     url = "https://marine-api.open-meteo.com/v1/marine"
     params = {
-        "latitude": lat, "longitude": lon,
+        "latitude": lat, 
+        "longitude": lon,
         "hourly": "wave_height,wave_direction,wave_period,sea_surface_temperature,ocean_current_velocity,wind_speed_10m,wind_direction_10m",
-        "forecast_days": 2, "past_days": 2, "timezone": "Asia/Tehran"
+        "forecast_days": 2, 
+        "past_days": 2, 
+        "timezone": "Asia/Tehran"
     }
-    try: return requests.get(url, params=params, timeout=30).json()
-    except: return None
+    try: 
+        return requests.get(url, params=params, timeout=30).json()
+    except: 
+        return None
 
+# --- تابع تبدیل درجه به جهت جغرافیایی ---
 def degree_to_direction(degree):
     if degree is None: return "نامشخص"
     if 337.5 <= degree or degree < 22.5: return "شمال"
@@ -57,18 +34,34 @@ def degree_to_direction(degree):
     elif 292.5 <= degree < 337.5: return "شمال‌غرب"
     return "نامشخص"
 
+# --- تابع تحلیل منبع باد بر اساس نام شهر و جهت ---
 def get_wind_analysis(city_name, degree):
     direction = degree_to_direction(degree)
-    if city_name in ["زابل (سیستان)", "زاهدان", "مکران"]:
-        if direction in ["شمال", "شمال‌غرب", "غرب"]: return f"از سمت {direction} (منشأ: کویرهای مرکزی ایران)"
-        elif direction in ["جنوب", "جنوب‌شرق", "شرق"]: return f"از سمت {direction} (منشأ: بیابان‌های افغانستان و پاکستان)"
-    elif city_name in ["اهواز", "بوشهر", "خلیج فارس", "بندرعباس", "بندر ماهشهر", "بندر دیر", "بندر لنگه"]:
+    
+    # برای دریای خزر (شمال ایران)
+    if city_name in ["بندر انزلی", "بابلسر", "نوشهر", "چالوس", "آستارا", "گرگان (ساحل)"]:
+        if direction in ["شمال", "شمال‌غرب"]: return f"از سمت {direction} (منشأ: روسیه و قفقاز)"
+        elif direction in ["جنوب", "جنوب‌شرق"]: return f"از سمت {direction} (منشأ: کوه‌های البرز)"
+        elif direction == "غرب": return f"از سمت {direction} (منشأ: اروپا)"
+
+    # برای خلیج فارس (جنوب ایران)
+    elif city_name in ["بندرعباس", "بوشهر", "بندر لنگه", "خارک", "بندر ماهشهر", "بندر دیر", "قشم", "کیش", "هرمز", "لارک", "هنگام", "سی‌ری"]:
         if direction in ["شمال", "شمال‌غرب"]: return f"از سمت {direction} (منشأ: عراق و سوریه)"
         elif direction in ["جنوب", "جنوب‌شرق"]: return f"از سمت {direction} (منشأ: بیابان‌های عربستان)"
-        elif direction in ["غرب"]: return f"از سمت {direction} (منشأ: صحرای عربستان)"
-    elif city_name == "تهران":
-        if direction in ["غرب", "جنوب‌غرب"]: return f"از سمت {direction} (منشأ: کویر مرکزی و دشت‌های غربی)"
+        elif direction == "غرب": return f"از سمت {direction} (منشأ: صحرای عربستان)"
+
+    # برای دریای عمان (جنوب شرق ایران)
     elif city_name in ["چابهار", "جاسک", "کنارک"]:
         if direction in ["جنوب", "جنوب‌غرب"]: return f"از سمت {direction} (منشأ: دریای عمان)"
         elif direction in ["شمال", "شمال‌شرق"]: return f"از سمت {direction} (منشأ: پاکستان)"
+        elif direction == "شرق": return f"از سمت {direction} (منشأ: اقیانوس هند)"
+
+    # برای شهرهای غیرساحلی (مثل تهران، زابل و...)
+    elif city_name in ["زابل (سیستان)", "زاهدان", "مکران"]:
+        if direction in ["شمال", "شمال‌غرب", "غرب"]: return f"از سمت {direction} (منشأ: کویرهای مرکزی ایران)"
+        elif direction in ["جنوب", "جنوب‌شرق", "شرق"]: return f"از سمت {direction} (منشأ: بیابان‌های افغانستان و پاکستان)"
+    
+    elif city_name == "تهران":
+        if direction in ["غرب", "جنوب‌غرب"]: return f"از سمت {direction} (منشأ: کویر مرکزی و دشت‌های غربی)"
+
     return f"از سمت {direction}"

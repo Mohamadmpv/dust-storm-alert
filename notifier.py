@@ -53,10 +53,23 @@ async def _send_to_bale(msg):
     url = f"https://tapi.bale.ai/bot{BALE_TOKEN}/sendMessage"
     for cid in users.keys():
         try:
+            # ارسال پیام اصلی
             r = requests.post(url, json={"chat_id": cid, "text": msg}, timeout=30)
             if r.status_code == 200: 
                 success = True
                 print(f"Bale Sent: {cid}")
+                
+                # ارسال دکمه بازگشت به منوی اصلی (برای همه پیام‌های خودکار)
+                reply_markup = {
+                    "inline_keyboard": [[{"text": "🔙 بازگشت به منوی اصلی", "callback_data": "menu_main"}]]
+                }
+                requests.post(url, json={
+                    "chat_id": cid, 
+                    "text": "برای مشاهده منو، روی دکمه زیر کلیک کنید:", 
+                    "reply_markup": reply_markup
+                }, timeout=30)
+            else:
+                print(f"Bale Failed {cid}: {r.text}")
         except Exception as e: 
             print(f"Bale Failed {cid}: {e}")
     return success
@@ -66,13 +79,18 @@ async def _send_to_telegram(msg):
     if not users or not TELEGRAM_TOKEN: return False
     success = False
     try:
-        from telegram import Bot
+        from telegram import Bot, InlineKeyboardMarkup, InlineKeyboardButton
         bot = Bot(token=TELEGRAM_TOKEN)
         for cid in users.keys():
             try:
+                # ارسال پیام اصلی
                 await bot.send_message(chat_id=cid, text=msg)
                 success = True
                 print(f"TG Sent: {cid}")
+                
+                # ارسال دکمه بازگشت به منوی اصلی (برای همه پیام‌های خودکار)
+                keyboard = [[InlineKeyboardButton("🔙 بازگشت به منوی اصلی", callback_data="menu_main")]]
+                await bot.send_message(chat_id=cid, text="برای مشاهده منو، روی دکمه زیر کلیک کنید:", reply_markup=InlineKeyboardMarkup(keyboard))
             except Exception as e: print(f"TG Failed {cid}: {e}")
     except Exception as e: print(f"TG Error: {e}")
     return success
