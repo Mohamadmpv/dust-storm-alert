@@ -4,6 +4,8 @@ import sys
 import os
 import requests
 import xml.etree.ElementTree as ET
+from ocean_ph import show_ph_report, show_oxygen_report
+from ocean_chl import show_chl_report
 from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
@@ -217,10 +219,28 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif data.startswith("ocean_") or data.startswith("pc_") or data.startswith("bp_") or data.startswith("res_") or data.startswith("eng_") or data.startswith("op_"):
             if data == "ocean_main": await query.edit_message_text("🔬 **بخش اقیانوس‌شناسی (علمی)**\n\nلطفاً یک گزینه را انتخاب کنید:", reply_markup=get_ocean_main_menu(), parse_mode='Markdown')
             elif data == "ocean_phys_chem": await query.edit_message_text("🌊 **فیزیک و شیمی دریا**\n\nلطفاً یک موضوع را انتخاب کنید:", reply_markup=get_ocean_phys_chem_menu())
-            elif data == "pc_sst_sal": await query.edit_message_text("🌡️ **دمای سطح آب و شوری**\n\n(در حال توسعه)", reply_markup=get_ocean_phys_chem_menu())
-            elif data == "pc_do_ph": await query.edit_message_text("⚖️ **اکسیژن و pH**\n\n(در حال توسعه)", reply_markup=get_ocean_phys_chem_menu())
-            elif data == "ocean_bio_poll": await query.edit_message_text("🐟 **زیست‌شناسی و آلودگی**\n\nلطفاً یک موضوع را انتخاب کنید:", reply_markup=get_ocean_bio_poll_menu())
-            elif data == "bp_chl": await query.edit_message_text("🟢 **کلروفیل و فیتوپلانکتون**\n\n(در حال توسعه)", reply_markup=get_ocean_bio_poll_menu())
+            elif data == "pc_sst_sal": 
+                await query.edit_message_text("🌡️ **دمای سطح آب و شوری**\n\n(داده‌های لحظه‌ای در حال توسعه است)", reply_markup=get_ocean_phys_chem_menu())
+            
+            elif data == "pc_do_ph": 
+                keyboard = [
+                    [InlineKeyboardButton("pH", callback_data="pc_ph_show")],
+                    [InlineKeyboardButton("اکسیژن", callback_data="pc_oxy_show")],
+                    [InlineKeyboardButton("🔙 بازگشت", callback_data="ocean_phys_chem")]
+                ]
+                await query.edit_message_text("⚖️ **انتخاب پارامتر شیمیایی:**", reply_markup=InlineKeyboardMarkup(keyboard))
+            
+            elif data == "pc_ph_show":
+                await show_ph_report(query)
+            elif data == "pc_oxy_show":
+                await show_oxygen_report(query)
+                
+            elif data == "ocean_bio_poll": 
+                await query.edit_message_text("🐟 **زیست‌شناسی و آلودگی**\n\nلطفاً یک موضوع را انتخاب کنید:", reply_markup=get_ocean_bio_poll_menu())
+            
+            elif data == "bp_chl": 
+                await show_chl_report(query)
+
             elif data == "bp_micro_blue": await query.edit_message_text("🧴 **میکروپلاستیک و کربن آبی**\n\n(در حال توسعه)", reply_markup=get_ocean_bio_poll_menu())
             elif data == "ocean_resources": await query.edit_message_text("📚 **منابع علمی**\n\nلطفاً یک گزینه را انتخاب کنید:", reply_markup=get_ocean_resources_menu())
             elif data == "res_news":
